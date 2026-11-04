@@ -30,7 +30,19 @@ export class ErroApp extends Error {
   }
 }
 
-const URL_BANCO = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+// A integração da Vercel pode criar a variável com um prefixo qualquer
+// (ex.: STORAGE_URL). Sem DATABASE_URL/POSTGRES_URL, usa a primeira
+// variável terminada em _URL que aponte pra um Postgres (preferindo a com pool).
+function acharUrlBanco() {
+  const fixa = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+  if (fixa) return fixa;
+  const candidatas = Object.entries(process.env)
+    .filter(([k, v]) => k.endsWith("_URL") && v && /^postgres(ql)?:\/\//.test(v))
+    .sort(([a], [b]) => Number(/UNPOOLED|NON_POOLING/.test(a)) - Number(/UNPOOLED|NON_POOLING/.test(b)));
+  return candidatas[0]?.[1];
+}
+
+const URL_BANCO = acharUrlBanco();
 
 export function tipoBanco(): "neon" | "local" | "faltando" {
   if (URL_BANCO) return "neon";
