@@ -1,110 +1,123 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# 🃏 Placar da Resenha
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+Placar ao vivo do truco e apostas amistosas da turma (truco, Valorant, sinuca, futebol…).
+**Só registro:** fichas e itens (🍺, 🥤, 🍟). Nada de depósito, Pix, carteira ou odds —
+o acerto de verdade é entre vocês, fora do site.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+Feito com Next.js + Postgres. Roda de graça na Vercel com o banco Neon (que a própria
+Vercel cria pra você com alguns cliques).
 
-## Features
+---
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+## Como funciona (resumo)
 
-## Demo
+- **Cadastro com usuário e senha.** Quem cria a conta já cai direto na aba **Ao vivo**.
+  O **primeiro** cadastro vira o dono/admin da turma; os outros entram como membros.
+- **Ao vivo:** todas as mesas abertas, com placar atualizando sozinho (a cada ~2 s).
+  Tocou na mesa, vê o placar, quem dá carta e as apostas.
+- **Dono da mesa** = quem marca os pontos. Começa sendo quem criou a mesa; os jogadores
+  podem fazer uma **votação rápida** pra escolher outro. Os outros só assistem.
+- **Visitante:** amigo que não quer usar o app entra só com o nome. O dono da mesa
+  senta ele, aposta e recebe por ele. Se um dia ele quiser o app, o admin cria um login
+  e ele mantém todo o histórico.
+- **Apostas:** cada um muda ou retira a própria aposta **até a partida começar**.
+  Depois de começar, fica travada.
+- **Esqueceu a senha?** O admin gera uma senha provisória (Turma → Membros → a pessoa).
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+---
 
-## Deploy to Vercel
+## Rodar no seu PC (teste)
 
-Vercel deployment will guide you through creating a Supabase account and project.
+Não precisa instalar banco nenhum: sem configuração, o app usa um Postgres embutido
+(fica na pasta `.dados-local`).
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
-
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
-
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
-
-## Clone and run locally
-
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
-
-2. Create a Next.js app using the Supabase Starter template npx command
-
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
-
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
-
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
-
-3. Use `cd` to change into the app's directory
-
-   ```bash
-   cd with-supabase-app
-   ```
-
-4. Rename `.env.example` to `.env.local` and update the following:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
+```bash
+npm install
 ```
 
-> [!NOTE]
-> This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-> Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-> See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
+```bash
+npm run dev
+```
 
-Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+Abra <http://localhost:3000>. Pra testar no celular na mesma Wi-Fi, use o endereço que aparece
+como "Network" no terminal (ex.: `http://192.168.1.103:3000`). Se o Windows perguntar sobre o
+firewall, permita em "Redes privadas".
 
-5. You can now run the Next.js local development server:
+Testes das regras do banco (18 cenários):
 
-   ```bash
-   npm run dev
-   ```
+```bash
+npm run test:db
+```
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+---
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+## Publicar na Vercel (grátis) — passo a passo
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+O código fica no GitHub (<https://github.com/OFC-Zart/betTruco>) e a Vercel publica
+sozinha toda vez que chega uma mudança nele.
 
-## Feedback and issues
+### 1. Criar o projeto na Vercel a partir do GitHub
+1. Entre em <https://vercel.com/signup> e crie a conta com **Continue with GitHub**
+   (plano **Hobby**, que é o grátis).
+2. No painel: **Add New… → Project**.
+3. Em *Import Git Repository*, ache **betTruco** e clique em **Import**
+   (se não aparecer, clique em *Adjust GitHub App Permissions* e libere o repositório).
+4. Não mude nada (o *Framework* já vem **Next.js**) e clique em **Deploy**.
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+O primeiro deploy sobe, mas o site vai mostrar **"Falta conectar o banco"** — é o próximo passo.
 
-## More Supabase examples
+### 2. Criar o banco (Neon) — tudo pelo site da Vercel
+1. No projeto, aba **Storage** → **Create Database** → escolha **Neon** (Serverless Postgres) → **Continue**.
+2. Região: **São Paulo** (se não tiver, escolha a mais próxima, ex.: US East).
+   Plano: **Free**. Clique em **Create**.
+3. Na tela seguinte, **Connect** ao projeto marcando todos os ambientes
+   (Production, Preview, Development).
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+A Vercel cria sozinha a variável `DATABASE_URL`. Você não precisa copiar nenhuma senha
+ou chave. As tabelas são criadas automaticamente no primeiro acesso.
+
+### 3. Publicar de novo (agora com o banco)
+Aba **Deployments** → no deploy mais recente, menu **⋯** → **Redeploy** → **Redeploy**.
+
+Abra o endereço do projeto (algo como `https://bet-truco.vercel.app`),
+**crie a sua conta primeiro** (você vira o dono/admin) e mande o link pra galera.
+
+> Daqui pra frente, toda mudança enviada pro GitHub (branch `main`) vira um deploy novo
+> sozinho, em ~1 minuto.
+
+**Alternativa sem GitHub:** `npx vercel login`, depois `npx vercel --prod` dentro da pasta.
+
+### Dicas
+- **Instalar no celular:** abra o site no Chrome do Android → menu ⋮ → **Instalar app**
+  (iPhone: Compartilhar → *Adicionar à Tela de Início*).
+- **Limites do plano grátis:** sobra muito pra uma turma de amigos. O banco Neon "dorme"
+  quando ninguém usa e acorda sozinho no próximo acesso (a primeira tela pode levar ~1 s).
+- O site fica configurado pra rodar em São Paulo (`vercel.json` → `regions: ["gru1"]`).
+
+---
+
+## Como as regras são garantidas
+
+- Toda ação passa por funções no banco (`db/migracoes/0001_inicial.sql`) que conferem quem
+  está pedindo: espectador não marca ponto, aposta não é retirada depois que a partida
+  começa, só quem cuida do visitante age por ele, etc.
+- As dívidas são geradas pelo banco, com trava contra duplicata (dois toques ao mesmo tempo
+  não geram dívida dobrada).
+- Truco: dupla perdedora valendo 1 🍺 por pessoa → cada perdedor deve 1 🍺 a um vencedor.
+- Fichas e itens nunca se misturam (cerveja é cerveja, ficha é ficha).
+- Senhas guardadas com hash (scrypt); sessão em cookie seguro (`httpOnly`).
+
+## Estrutura
+
+```
+db/migracoes/          tabelas e regras (roda sozinho no 1º acesso)
+lib/server/            banco, sessão/senha e dados de cada tela
+app/api/               rotas: auth (cadastro/entrar/sair/senha), rpc, tela, eu, status
+app/entrar             página inicial + cadastro/login
+app/(app)/aovivo       mesas ao vivo + palpites abertos
+app/(app)/mesa/[id]    placar, votação do dono, assentos/visitantes, apostas da mesa
+app/(app)/palpites     apostas em qualquer coisa
+app/(app)/acertos      quem deve o quê, Recebi, Cobrar no WhatsApp
+app/(app)/turma        ranking, histórico, membros/visitantes, configurações
+scripts/test-db.mjs    testes das regras do banco
+```
