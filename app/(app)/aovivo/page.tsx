@@ -168,7 +168,7 @@ function CardMesa({
                 {textoValor({ unidade: p.valendo_unidade, item_id: p.valendo_item_id, quantidade: p.valendo_qtd }, itens, true)} por pessoa
               </span>
             )}
-            {onze && <Selo cor="alerta">MÃO DE ONZE</Selo>}
+            {p.escuras ? <Selo cor="alerta">🌑 ÀS ESCURAS</Selo> : onze && <Selo cor="alerta">MÃO DE ONZE</Selo>}
           </div>
         </>
       ) : (

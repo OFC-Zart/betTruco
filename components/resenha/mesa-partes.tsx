@@ -377,7 +377,7 @@ export function Placar({
       .join(" & ");
 
   return (
-    <div className="rounded-3xl border bg-card p-3">
+    <div className={cn("rounded-3xl border bg-card p-3 transition-colors", p.escuras && "border-alerta/50 shadow-[0_0_40px_-12px_hsl(var(--alerta)/0.6)]")}>
       <div className="grid grid-cols-2 gap-3">
         {(["A", "B"] as const).map((d) => {
           const pts = d === "A" ? p.placar_a : p.placar_b;
@@ -393,9 +393,9 @@ export function Placar({
                   <span className="inline-block animate-pulo">{pts}</span>
                 </div>
                 {p.melhor_de_3 && <Quedas n={d === "A" ? p.quedas_a : p.quedas_b} className="justify-center" />}
-                {onze && <Selo cor="alerta" className="mt-1">MÃO DE ONZE</Selo>}
+                {onze && !p.escuras && <Selo cor="alerta" className="mt-1">MÃO DE ONZE</Selo>}
               </div>
-              {podeEditar && (
+              {podeEditar && !p.escuras && (
                 <div className="mt-2 flex flex-col gap-2">
                   <Button size="lg" className="h-16 font-placar text-3xl" disabled={ocupado} onClick={() => jogar(d, "+1")}>
                     +1
@@ -417,6 +417,21 @@ export function Placar({
           );
         })}
       </div>
+
+      {p.escuras ? (
+        <PainelEscuras p={p} podeEditar={podeEditar} ocupado={ocupado} jogar={jogar} />
+      ) : (
+        podeEditar && (
+          <Button
+            variant="outline"
+            className="mt-3 w-full border-alerta/40 font-display text-lg tracking-widest text-alerta"
+            disabled={ocupado}
+            onClick={() => jogar(null, "escuras")}
+          >
+            🌑 ÀS ESCURAS
+          </Button>
+        )
+      )}
 
       <div className="mt-3 flex items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">
         <span>
@@ -515,6 +530,12 @@ export function Historico({ eventos, p }: { eventos: TrucoEvent[]; p: TrucoMatch
         <li key={e.id} className={cn("flex items-center gap-2 px-3 py-2 text-sm", e.desfeito && "text-muted-foreground line-through")}>
           {e.tipo === "carta" ? (
             <span>🃏 passou a vez de dar carta</span>
+          ) : e.tipo === "escuras" ? (
+            <span>🌑 ligou/desligou o às escuras</span>
+          ) : e.tipo === "vaza" ? (
+            <span>
+              🌑 {e.pontos > 0 ? <b className="text-neon">venceu às escuras</b> : "vaza"} — {dupla(e.dupla)}
+            </span>
           ) : e.tipo === "desfazer" ? (
             <span className="text-muted-foreground">↩ desfez a última jogada</span>
           ) : (
@@ -533,5 +554,68 @@ export function Historico({ eventos, p }: { eventos: TrucoEvent[]; p: TrucoMatch
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Mão às escuras (11 a 11): melhor de 3 vazas; quem fizer 2 leva a queda. */
+function PainelEscuras({
+  p,
+  podeEditar,
+  ocupado,
+  jogar,
+}: {
+  p: TrucoMatch;
+  podeEditar: boolean;
+  ocupado: boolean;
+  jogar: (d: Dupla | null, t: TipoJogada) => void;
+}) {
+  const nome = (d: Dupla) => (d === "A" ? p.nome_dupla_a : p.nome_dupla_b);
+  const conta = (d: Dupla) => p.vazas.split("").filter((v) => v === d).length;
+  return (
+    <div className="mt-3 rounded-2xl border border-alerta/50 bg-black p-3 text-center">
+      <div className="font-display text-2xl tracking-widest text-alerta">🌑 ÀS ESCURAS</div>
+      <div className="text-xs text-muted-foreground">
+        Ninguém vê as cartas · melhor de 3 vazas · quem fizer 2 leva a queda
+      </div>
+      <div className="mt-3 flex justify-center gap-3">
+        {[0, 1, 2].map((i) => {
+          const v = p.vazas[i] as Dupla | undefined;
+          return (
+            <div
+              key={i}
+              className={cn(
+                "flex size-14 flex-col items-center justify-center rounded-xl border text-[10px] leading-tight",
+                !v && "border-dashed text-muted-foreground",
+                v === "A" && "border-neon bg-neon/15 text-neon",
+                v === "B" && "border-ambar bg-ambar/15 text-ambar",
+              )}
+            >
+              <span className="font-placar text-lg">{i + 1}ª</span>
+              <span className="w-full truncate px-1">{v ? nome(v) : "vaza"}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 text-xs text-muted-foreground">
+        {nome("A")} {conta("A")} × {conta("B")} {nome("B")}
+      </div>
+      {podeEditar && (
+        <>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Button className="h-14 flex-col gap-0 leading-tight" disabled={ocupado} onClick={() => jogar("A", "vaza")}>
+              <span className="text-xs font-normal">vaza pra</span>
+              <span className="w-full truncate font-display text-lg tracking-wide">{p.nome_dupla_a}</span>
+            </Button>
+            <Button variant="ambar" className="h-14 flex-col gap-0 leading-tight" disabled={ocupado} onClick={() => jogar("B", "vaza")}>
+              <span className="text-xs font-normal">vaza pra</span>
+              <span className="w-full truncate font-display text-lg tracking-wide">{p.nome_dupla_b}</span>
+            </Button>
+          </div>
+          <button className="mt-3 text-xs text-muted-foreground underline" disabled={ocupado} onClick={() => jogar(null, "escuras")}>
+            sair do às escuras
+          </button>
+        </>
+      )}
+    </div>
   );
 }

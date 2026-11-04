@@ -336,4 +336,50 @@ await como("bia", "select criar_visitante($1, 'Pedro')", [g3.id]);
 await falha("bia", "select adicionar_membro($1, 'pedro')", [g3.id], /Já tem alguém chamado "pedro" nessa turma/);
 passo("usuário não repete no site; apelido não repete dentro da turma (cadastro, troca, adicionar)");
 
+// --- mão às escuras (0005_escuras.sql)
+const mE = (await um("leo", "select criar_mesa($1, 'Escuras') as id", [gid])).id;
+await como("leo", "select sentar($1, 0)", [mE]);
+await como("pedro", "select sentar($1, 1)", [mE]);
+const pE = (await um("leo", "select iniciar_partida($1, 'A', 'B', null, null, 0, null, 12, true) as id", [mE])).id;
+const jogar = (d, t) => um("leo", "select * from marcar_ponto($1, $2, $3)", [pE, d, t]);
+await jogar("A", "nove"); await jogar("A", "+1");
+await jogar("B", "nove"); await jogar("B", "+1");
+let e1 = await jogar("A", "+1");
+assert.equal(e1.escuras, false);
+e1 = await jogar("B", "+1");
+assert.deepEqual([e1.placar_a, e1.placar_b, e1.escuras], [11, 11, true]);
+passo("11 a 11 entra sozinho no às escuras");
+
+await falha("leo", "select marcar_ponto($1, 'A', 'truco')", [pE], /marque as vazas/);
+await falha("pedro", "select marcar_ponto($1, 'A', 'vaza')", [pE], /dono da mesa/);
+e1 = await jogar("A", "vaza");
+e1 = await jogar("B", "vaza");
+assert.equal(e1.vazas, "AB");
+assert.equal(e1.quedas_a, 0);
+e1 = await jogar("A", "vaza");
+assert.deepEqual([e1.quedas_a, e1.placar_a, e1.placar_b, e1.escuras, e1.vazas], [1, 0, 0, false, ""]);
+passo("às escuras: melhor de 3 vazas, quem faz 2 leva a queda (sem truco no meio)");
+
+e1 = await jogar(null, "desfazer");
+assert.deepEqual([e1.quedas_a, e1.placar_a, e1.placar_b, e1.escuras, e1.vazas], [0, 11, 11, true, "AB"]);
+e1 = await jogar(null, "desfazer");
+assert.equal(e1.vazas, "A");
+await jogar("B", "vaza");
+await jogar("B", "vaza");
+e1 = await um("leo", "select * from truco_matches where id = $1", [pE]);
+assert.deepEqual([e1.quedas_b, e1.placar_a, e1.placar_b], [1, 0, 0]);
+passo("desfazer volta a vaza (e a queda); B vira e leva");
+
+e1 = await jogar(null, "escuras");
+assert.equal(e1.escuras, true);
+await falha("leo", "select marcar_ponto($1, 'A', '+1')", [pE], /marque as vazas/);
+e1 = await jogar(null, "escuras");
+assert.equal(e1.escuras, false);
+e1 = await jogar("A", "+1");
+assert.equal(e1.placar_a, 1);
+await falha("leo", "select marcar_ponto($1, 'A', 'vaza')", [pE], /não está ligada/);
+passo("botão liga/desliga o às escuras na mão");
+
+await como("leo", "select encerrar_mesa($1)", [mE]);
+
 console.log(`\n${ok} grupos de verificação OK`);

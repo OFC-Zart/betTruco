@@ -3,7 +3,7 @@ export type Dupla = "A" | "B";
 export type Unidade = "fichas" | "item";
 export type Modalidade = "truco" | "valorant" | "futebol" | "sinuca" | "baralho" | "outro";
 export type StatusAposta = "aberto" | "valendo" | "aguardando" | "resolvido" | "empate" | "cancelado";
-export type TipoJogada = "+1" | "-1" | "truco" | "seis" | "nove" | "doze" | "desfazer" | "carta";
+export type TipoJogada = "+1" | "-1" | "truco" | "seis" | "nove" | "doze" | "desfazer" | "carta" | "escuras" | "vaza";
 
 export interface Profile {
   id: string;
@@ -83,6 +83,10 @@ export interface TrucoMatch {
   carteador_pos: number;
   quedas_a: number;
   quedas_b: number;
+  /** mão às escuras (11 a 11): melhor de 3 vazas */
+  escuras: boolean;
+  /** vazas da mão às escuras, em ordem: ex. "AB" */
+  vazas: string;
   status: "em_jogo" | "encerrada" | "cancelada";
   vencedor: Dupla | null;
   created_at: string;
