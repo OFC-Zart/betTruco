@@ -65,8 +65,8 @@ export function Avatar({ p, tamanho = "md", className }: { p?: Pick<Profile, "av
 
 export function AoVivo({ className }: { className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full bg-neon/15 px-2 py-0.5 text-[11px] font-bold tracking-widest text-neon", className)}>
-      <span className="size-2 animate-ao-vivo rounded-full bg-neon" />
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full border border-alerta/40 bg-alerta/15 px-2 py-0.5 text-[11px] font-bold tracking-widest text-alerta", className)}>
+      <span className="size-2 animate-ao-vivo rounded-full bg-alerta" />
       AO VIVO
     </span>
   );
@@ -145,8 +145,9 @@ export function Stepper({ valor, aoMudar, min = 1, max = 100000 }: { valor: numb
 
 export function Titulo({ children, direita }: { children: React.ReactNode; direita?: React.ReactNode }) {
   return (
-    <div className="mb-3 mt-6 flex items-end justify-between gap-2">
-      <h2 className="font-display text-2xl tracking-wide text-foreground/90">{children}</h2>
+    <div className="mb-3 mt-7 flex items-center gap-3">
+      <h2 className="shrink-0 font-display text-2xl tracking-wide text-ambar">{children}</h2>
+      <div className="linha-ouro flex-1 opacity-60" />
       {direita}
     </div>
   );
@@ -164,6 +165,7 @@ export function Vazio({ emoji, children }: { emoji: string; children: React.Reac
 export function Rodape() {
   return (
     <p className="mt-10 px-2 text-center text-[11px] leading-relaxed text-muted-foreground/70">
+      <span className="linha-ouro mx-auto mb-4 block w-2/3 opacity-50" />
       🃏 Só registro entre amigos: fichas e itens. O site não movimenta dinheiro —
       o acerto de verdade é com vocês, fora daqui.
     </p>

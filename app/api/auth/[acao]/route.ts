@@ -62,7 +62,7 @@ const ACOES: Record<string, (c: Corpo, req: Request) => Promise<unknown>> = {
       await frear(q, [{ chave: chaveIp, max: 6, minutos: 60 }]);
       await loginLivre(q, login);
       const [p] = await q.query<{ id: string }>(
-        "insert into profiles (apelido, avatar, cor) values ($1, coalesce(nullif($2, ''), '🃏'), coalesce(nullif($3, ''), '#39FF14')) returning id",
+        "insert into profiles (apelido, avatar, cor) values ($1, coalesce(nullif($2, ''), '🃏'), coalesce(nullif($3, ''), '#D9A441')) returning id",
         [apelido, texto(c.avatar).slice(0, 16), texto(c.cor)],
       );
       await q.query("insert into usuarios (id, login, senha_hash) values ($1, $2, $3)", [p.id, login, hash]);

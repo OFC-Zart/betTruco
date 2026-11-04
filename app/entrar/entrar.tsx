@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Curva } from "@/components/resenha/curva";
 import { Avatar, Label, Rodape } from "@/components/resenha/ui";
 import { InstalarApp } from "@/components/resenha/instalar-app";
 import { useToast } from "@/components/resenha/toast";
@@ -93,20 +95,23 @@ export function Entrar() {
   }
 
   return (
-    <main className="relative mx-auto min-h-dvh max-w-md overflow-hidden px-5 pb-10 pt-[max(env(safe-area-inset-top),1.5rem)]">
+    <main className="relative mx-auto min-h-dvh max-w-md overflow-hidden px-5 pb-10 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
       <Fundo />
 
       <div className="relative">
+        {/* leque de cartas da marca (mesma arte do ícone) */}
+        <Image src="/marca/leque.png" alt="" width={720} height={438} priority className="mx-auto -mb-2 w-[82%] select-none mix-blend-screen" draggable={false} />
         <div className="flex justify-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-neon/30 bg-neon/10 px-3 py-1 text-[11px] font-bold tracking-[0.2em] text-neon">
-            <span className="size-2 animate-ao-vivo rounded-full bg-neon" /> AO VIVO NO BAR
+          <span className="inline-flex items-center gap-2 rounded-full border border-alerta/40 bg-alerta/10 px-3 py-1 text-[11px] font-bold tracking-[0.2em] text-alerta">
+            <span className="size-2 animate-ao-vivo rounded-full bg-alerta" /> AO VIVO NO BAR
           </span>
         </div>
-        <h1 className="mt-4 text-center font-display text-[4.2rem] leading-[0.85] tracking-wide">
-          <span className="text-neon brilho-neon">PLACAR</span>
+        <h1 className="mt-3 text-center font-display text-[4.2rem] leading-[0.85] tracking-wide">
+          <span className="texto-ouro">PLACAR</span>
           <br />
           <span className="text-foreground">DA RESENHA</span>
         </h1>
+        <Curva className="mx-auto mt-2 w-3/4" />
         <p className="mx-auto mt-3 max-w-[30ch] text-center text-sm text-muted-foreground">
           Truco, Valorant, sinuca, pênalti… o placar ao vivo da mesa e as apostas de 🍺 e fichas da turma, tudo anotado.
         </p>
@@ -245,14 +250,14 @@ function Fundo() {
   const naipes = [
     { s: "♠", c: "text-neon/20", p: "left-[6%] top-[8%]", d: "0s", t: "text-5xl" },
     { s: "♥", c: "text-alerta/25", p: "right-[8%] top-[14%]", d: "1.5s", t: "text-4xl" },
-    { s: "♦", c: "text-ambar/25", p: "left-[10%] top-[44%]", d: "3s", t: "text-3xl" },
-    { s: "♣", c: "text-neon/15", p: "right-[6%] top-[52%]", d: "2s", t: "text-6xl" },
+    { s: "♦", c: "text-alerta/25", p: "left-[10%] top-[44%]", d: "3s", t: "text-3xl" },
+    { s: "♣", c: "text-neon/20", p: "right-[6%] top-[52%]", d: "2s", t: "text-6xl" },
     { s: "♠", c: "text-foreground/10", p: "left-[45%] top-[70%]", d: "4s", t: "text-4xl" },
   ];
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 -z-0">
       <div className="absolute -top-32 left-1/2 h-72 w-[140%] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,hsl(var(--neon)/0.22),transparent_65%)]" />
-      <div className="absolute -bottom-40 left-1/2 h-96 w-[160%] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,hsl(140_70%_20%/0.35),transparent_65%)]" />
+      <div className="absolute -bottom-40 left-1/2 h-96 w-[160%] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,hsl(var(--alerta)/0.16),transparent_65%)]" />
       {naipes.map((n, i) => (
         <span key={i} className={cn("absolute animate-flutuar select-none", n.c, n.p, n.t)} style={{ animationDelay: n.d }}>
           {n.s}
@@ -281,12 +286,12 @@ function PlacarDemo() {
   const l = LANCES[i];
   const onze = l.a === 11 || l.b === 11;
   return (
-    <div className="mt-6 rounded-3xl border border-neon/30 bg-card/90 p-4 shadow-[0_0_50px_-15px_hsl(var(--neon)/0.45)] backdrop-blur">
+    <div className="mt-6 rounded-3xl border border-neon/35 bg-card/90 p-4 shadow-[0_0_50px_-15px_hsl(var(--neon)/0.45)] backdrop-blur">
       <div className="flex items-center gap-2">
         <span className="font-display text-xl tracking-wide">MESA 1</span>
         <span className="text-xs text-muted-foreground">· Mesa do fundo</span>
-        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-neon/15 px-2 py-0.5 text-[11px] font-bold tracking-widest text-neon">
-          <span className="size-2 animate-ao-vivo rounded-full bg-neon" /> AO VIVO
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-alerta/40 bg-alerta/15 px-2 py-0.5 text-[11px] font-bold tracking-widest text-alerta">
+          <span className="size-2 animate-ao-vivo rounded-full bg-alerta" /> AO VIVO
         </span>
       </div>
       <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">

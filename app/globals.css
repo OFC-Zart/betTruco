@@ -2,31 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tema único: bar & games (fundo preto, neon, âmbar) */
+/* Tema único: mesa de cartas — preto, dourado e vermelho (da arte do ícone).
+   Os nomes "neon" e "ambar" ficaram por compatibilidade:
+   --neon = dourado (ação, destaque, placar), --ambar = champanhe (valores, itens),
+   --alerta = vermelho das cartas (a pagar, alertas, AO VIVO). */
 @layer base {
   :root {
-    --background: 0 0% 4%; /* #0A0A0A */
-    --foreground: 0 0% 96%;
-    --card: 0 0% 8%; /* #151515 */
-    --card-foreground: 0 0% 96%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 96%;
-    --primary: 105 100% 54%; /* verde-neon */
+    --background: 0 0% 2%;
+    --foreground: 40 30% 94%;
+    --card: 30 10% 6%;
+    --card-foreground: 40 30% 94%;
+    --popover: 30 10% 6%;
+    --popover-foreground: 40 30% 94%;
+    --primary: 39 66% 56%;
     --primary-foreground: 0 0% 4%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 96%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 14%;
-    --accent-foreground: 0 0% 96%;
-    --destructive: 0 85% 55%;
+    --secondary: 30 8% 11%;
+    --secondary-foreground: 40 30% 94%;
+    --muted: 30 8% 11%;
+    --muted-foreground: 35 10% 60%;
+    --accent: 30 10% 13%;
+    --accent-foreground: 40 30% 94%;
+    --destructive: 355 80% 52%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 16%;
-    --input: 0 0% 18%;
-    --ring: 105 100% 54%;
-    --neon: 105 100% 54%;
-    --ambar: 40 100% 52%;
-    --alerta: 0 85% 58%;
+    --border: 36 25% 17%;
+    --input: 36 18% 20%;
+    --ring: 39 66% 56%;
+    --neon: 39 66% 56%; /* dourado #D9A441 */
+    --ambar: 42 78% 74%; /* champanhe #F2D58C */
+    --alerta: 355 80% 55%; /* vermelho das cartas */
     --radius: 0.85rem;
     color-scheme: dark;
   }
@@ -40,8 +43,14 @@
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply text-foreground antialiased;
     overscroll-behavior-y: none;
+    /* brilho dourado suave no alto, como a luz em cima das cartas */
+    background:
+      radial-gradient(120% 60% at 50% -10%, hsl(var(--neon) / 0.13), transparent 60%),
+      radial-gradient(90% 40% at 50% 110%, hsl(var(--alerta) / 0.07), transparent 70%),
+      hsl(var(--background));
+    background-attachment: fixed;
   }
   button {
     touch-action: manipulation;
@@ -59,9 +68,31 @@
     display: none;
   }
   .brilho-neon {
-    text-shadow: 0 0 12px hsl(var(--neon) / 0.55);
+    text-shadow: 0 0 14px hsl(var(--neon) / 0.5);
   }
   .brilho-ambar {
-    text-shadow: 0 0 12px hsl(var(--ambar) / 0.5);
+    text-shadow: 0 0 12px hsl(var(--ambar) / 0.45);
+  }
+  /* cartões com um reflexo dourado bem leve no topo */
+  .bg-card {
+    background-image: linear-gradient(180deg, hsl(var(--neon) / 0.06), transparent 45%);
+    box-shadow: inset 0 1px 0 hsl(var(--neon) / 0.1);
+  }
+  /* linha fina dourada que some nas pontas */
+  .linha-ouro {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--neon) / 0.75), transparent);
+  }
+  /* texto em dourado metálico */
+  .texto-ouro {
+    background: linear-gradient(180deg, #fbe9a8 0%, #e2b453 50%, #a56f1f 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 10px hsl(var(--neon) / 0.35));
+  }
+  /* respiro pro relógio/notch do iPhone quando aberto como app */
+  .pt-topo {
+    padding-top: calc(env(safe-area-inset-top) + 0.75rem);
   }
 }

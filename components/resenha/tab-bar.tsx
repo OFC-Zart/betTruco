@@ -21,7 +21,8 @@ export function TabBar() {
   const { isAdmin } = useTurma();
   const abas = isAdmin ? [...ABAS, ABA_ADMIN] : ABAS;
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/90 backdrop-blur pb-safe">
+    <nav className="fixed inset-x-0 bottom-0 z-40 bg-black/85 backdrop-blur pb-safe">
+      <div className="linha-ouro" />
       <div className={cn("mx-auto grid max-w-md", isAdmin ? "grid-cols-5" : "grid-cols-4")}>
         {abas.map(({ href, nome, Icone, ativo }) => {
           const on = ativo.some((a) => path.startsWith(a));

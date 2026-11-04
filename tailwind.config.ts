@@ -60,8 +60,8 @@ export default {
       },
       keyframes: {
         "ao-vivo": {
-          "0%, 100%": { opacity: "1", boxShadow: "0 0 0 0 hsl(var(--neon) / 0.6)" },
-          "50%": { opacity: "0.7", boxShadow: "0 0 0 6px hsl(var(--neon) / 0)" },
+          "0%, 100%": { opacity: "1", boxShadow: "0 0 0 0 hsl(var(--alerta) / 0.6)" },
+          "50%": { opacity: "0.7", boxShadow: "0 0 0 6px hsl(var(--alerta) / 0)" },
         },
         pulo: {
           "0%": { transform: "scale(1)" },

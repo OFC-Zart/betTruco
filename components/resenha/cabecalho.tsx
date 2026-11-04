@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useTurma } from "./turma-provider";
+import { Curva } from "./curva";
 import { CriarOuEntrarTurma } from "./turmas";
 import { Avatar, Sheet } from "./ui";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,8 @@ export function Cabecalho({ titulo, sub }: { titulo: string; sub?: React.ReactNo
           <span className="truncate">♣ {turma.nome}</span>
           <ChevronDown className="size-3.5 shrink-0" />
         </button>
-        <h1 className="mt-1 font-display text-5xl leading-none tracking-wide">{titulo}</h1>
+        <h1 className="mt-1 font-display text-5xl leading-none tracking-wide texto-ouro">{titulo}</h1>
+        <Curva className="mt-1 w-44" />
         {sub && <div className="mt-1 text-sm text-muted-foreground">{sub}</div>}
       </div>
       <Link href="/config" aria-label="Minhas configurações" className="mt-1">

@@ -70,4 +70,4 @@ export function numeroWhats(n: string | null) {
 }
 
 export const AVATARES = ["🃏", "🍺", "🎮", "🎯", "🎱", "⚽", "👑", "🐐", "🦈", "🔥", "💀", "🤠", "🥷", "🐺", "🦊", "🍀"];
-export const CORES = ["#39FF14", "#FFB31A", "#00E5FF", "#FF3DFF", "#FF5A36", "#B388FF", "#FFFFFF", "#FFE600"];
+export const CORES = ["#D9A441", "#D71A28", "#F2D58C", "#FFFFFF", "#00E5FF", "#FF3DFF", "#39FF14", "#B388FF"];
