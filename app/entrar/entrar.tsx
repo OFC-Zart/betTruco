@@ -6,6 +6,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, Label, Rodape } from "@/components/resenha/ui";
+import { InstalarApp } from "@/components/resenha/instalar-app";
 import { useToast } from "@/components/resenha/toast";
 import { postar } from "@/lib/api";
 import { AVATARES, CORES } from "@/lib/format";
@@ -118,6 +119,8 @@ export function Entrar() {
           <Destaque emoji="🍺" titulo="Quem deve o quê" texto="Cerveja é cerveja, ficha é ficha. Botão de cobrar no Zap." />
           <Destaque emoji="🏆" titulo="Ranking zoeira" texto="Rei do truco, vidente, caloteiro do mês…" />
         </div>
+
+        <InstalarApp className="mt-5" />
 
         {semBanco && (
           <div className="mt-5 rounded-2xl border border-alerta/40 bg-alerta/10 p-4 text-sm text-red-200">

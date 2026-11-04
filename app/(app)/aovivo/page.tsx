@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Cabecalho } from "@/components/resenha/cabecalho";
 import { CardAposta } from "@/components/resenha/apostas";
+import { InstalarApp } from "@/components/resenha/instalar-app";
 import { useTurma } from "@/components/resenha/turma-provider";
 import { AoVivo, Quedas, Rodape, Selo, Sheet, Titulo, Vazio } from "@/components/resenha/ui";
 import { type MesaCompleta, nomeJogador, partidaAtual } from "@/components/resenha/mesa-util";
@@ -61,6 +62,8 @@ export default function AoVivoPage() {
             : "…"
         }
       />
+
+      <InstalarApp chave="resenha:instalar-dispensado" className="mb-4" />
 
       <Button size="lg" className="w-full font-display text-2xl tracking-wider" onClick={() => setCriando(true)}>
         <Plus className="!size-6" /> NOVA MESA

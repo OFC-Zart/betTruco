@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTurma } from "@/components/resenha/turma-provider";
 import { useToast } from "@/components/resenha/toast";
+import { InstalarApp } from "@/components/resenha/instalar-app";
 import { CriarOuEntrarTurma } from "@/components/resenha/turmas";
 import { Avatar, Label, Rodape, Titulo } from "@/components/resenha/ui";
 import { postar } from "@/lib/api";
@@ -114,6 +115,8 @@ export default function ConfigPage() {
         Pra trocar de turma, toque no nome dela no topo da tela (♣ {turma.nome.toUpperCase()} ▾).
       </p>
       <CriarOuEntrarTurma aoConcluir={() => router.push("/aovivo")} />
+
+      <InstalarApp className="mt-6" />
 
       <div className="mt-6 flex flex-col gap-2">
         <Button variant="outline" onClick={sairDaTurma}>

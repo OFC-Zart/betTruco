@@ -20,6 +20,6 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // tudo, menos estáticos, ícones, manifest e service worker
-    "/((?!_next/static|_next/image|icons/|sw.js|manifest.webmanifest|offline.html|icon.png|apple-icon.png|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|\\.well-known/|icons/|sw.js|manifest.webmanifest|offline.html|icon.png|apple-icon.png|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/**/*": ["./db/migracoes/**/*"],
   },
+  async rewrites() {
+    // verificação do app Android (TWA)
+    return [{ source: "/.well-known/assetlinks.json", destination: "/api/assetlinks" }];
+  },
   async headers() {
     return [
       {
