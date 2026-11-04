@@ -34,6 +34,11 @@ const RPCS: Record<string, "linha" | "valor" | "nada"> = {
   contestar_resultado: "nada",
   auto_confirmar: "valor",
   receber: "nada",
+  admin_quitar_dividas: "valor",
+  admin_apagar_dividas: "valor",
+  admin_apagar_aposta: "nada",
+  admin_apagar_mesa: "nada",
+  admin_limpar_historico: "nada",
 };
 
 export async function POST(req: Request, { params }: { params: Promise<{ fn: string }> }) {

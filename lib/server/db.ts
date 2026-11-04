@@ -98,7 +98,8 @@ async function criar(): Promise<Banco> {
       throw new ErroApp("Banco não conectado. Na Vercel: aba Storage → Neon → Connect e depois Redeploy.", 503);
     }
     const { PGlite } = await import("@electric-sql/pglite");
-    const db = new PGlite(path.join(process.cwd(), ".dados-local"));
+    // PASTA_BANCO_LOCAL: usar outra pasta (ex.: pra testar sem mexer nos seus dados)
+    const db = new PGlite(process.env.PASTA_BANCO_LOCAL ?? path.join(process.cwd(), ".dados-local"));
     await db.waitReady;
     b = {
       tipo: "local",

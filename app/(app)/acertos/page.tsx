@@ -162,7 +162,7 @@ export default function AcertosPage() {
                     {d.quitado_qtd > 0 && resto > 0 && ` · pago ${d.quitado_qtd} de ${d.quantidade}`}
                   </span>
                 </span>
-                <span className={cn("text-xs font-semibold", resto === 0 ? "text-neon" : "text-alerta")}>{resto === 0 ? "✔ quitado" : "pendente"}</span>
+                <span className={cn("text-xs font-semibold", resto === 0 ? "text-neon" : "text-alerta")}>{resto === 0 ? (d.zerada ? "✔ quitada (admin)" : "✔ quitado") : "pendente"}</span>
               </li>
             );
           })}

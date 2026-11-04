@@ -126,4 +126,25 @@ export const TELAS: Record<string, Tela> = {
       return { partidas, apostas, dividas };
     },
   },
+
+  // aba Admin (só admin): tudo da turma pra quitar, apagar e gerenciar
+  admin: {
+    turma: turmaDoParametro,
+    async dados(q, _p, t) {
+      const [a] = await q.query<{ admin: boolean }>("select is_admin($1) as admin", [t]);
+      if (!a?.admin) throw new ErroApp("Só admin entra aqui", 403);
+      const [dividas, apostas, mesas] = await emSequencia([
+        () => lista(q, "select * from debts where group_id = $1 order by created_at desc limit 2000", [t]),
+        () => lista(q, `${APOSTA_COM_MESA} where w.group_id = $1 order by w.created_at desc limit 300`, [t]),
+        () =>
+          lista(
+            q,
+            `${MESA_COMPLETA} where m.group_id = $1
+             order by (m.status = 'encerrada'), coalesce(m.encerrada_em, m.created_at) desc limit 200`,
+            [t],
+          ),
+      ]);
+      return { dividas, apostas, mesas };
+    },
+  },
 };

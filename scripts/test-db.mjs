@@ -245,4 +245,54 @@ await falha("leo", "select definir_papel($1, $2, 'membro')", [gid, ids.leo], /pe
 await falha("leo", "select definir_papel($1, $2, 'admin')", [gid, tio], /Visitante/);
 passo("permissões de admin");
 
+// --- admin na aba Acertos (0002_admin.sql)
+const dBia = await um("leo", "select * from debts where devedor_id = $1 and quitado_qtd < quantidade limit 1", [ids.bia]);
+assert.ok(dBia);
+await falha("ana", "select admin_quitar_dividas($1, $2)", [gid, dBia.id], /Só admin/);
+assert.equal((await um("leo", "select admin_quitar_dividas($1, $2) as n", [gid, dBia.id])).n, 1);
+const dBiaDepois = await um("leo", "select quitado_qtd, quantidade, zerada from debts where id = $1", [dBia.id]);
+assert.equal(dBiaDepois.quitado_qtd, dBiaDepois.quantidade);
+assert.equal(dBiaDepois.zerada, true);
+passo("admin quita uma dívida (fica no histórico como quitada pelo admin)");
+
+const dPenalti = await um("leo", "select id from debts where origem_id = $1", [p]);
+await falha("bia", "select admin_apagar_dividas($1, $2)", [gid, dPenalti.id], /Só admin/);
+assert.equal((await um("leo", "select admin_apagar_dividas($1, $2) as n", [gid, dPenalti.id])).n, 1);
+assert.equal((await como("leo", "select 1 from debts where id = $1", [dPenalti.id])).rows.length, 0);
+assert.equal((await como("leo", "select 1 from wagers where id = $1", [p])).rows.length, 0);
+passo("admin apaga dívida de aposta: some a dívida e a aposta (limpar testes)");
+
+const teste = (await um("bia", "select criar_aposta($1, 'texto_livre', 'teste', 'outro', 'fichas', null, 3) as id", [gid])).id;
+await falha("bia", "select admin_apagar_aposta($1)", [teste], /Só admin/);
+await como("leo", "select admin_apagar_aposta($1)", [teste]);
+await como("leo", "select admin_apagar_aposta($1)", [apZeca]);
+assert.equal((await como("leo", "select 1 from wagers where id in ($1, $2)", [teste, apZeca])).rows.length, 0);
+assert.equal((await como("leo", "select 1 from debts where origem_id = $1", [apZeca])).rows.length, 0);
+passo("admin apaga aposta aberta ou resolvida (e a dívida que ela gerou)");
+
+assert.ok((await um("leo", "select admin_quitar_dividas($1) as n", [gid])).n >= 1);
+assert.equal((await um("leo", "select count(*)::int c from debts where group_id = $1 and quitado_qtd < quantidade", [gid])).c, 0);
+assert.ok((await um("leo", "select admin_apagar_dividas($1) as n", [gid])).n >= 1);
+assert.equal((await um("leo", "select count(*)::int c from debts where group_id = $1", [gid])).c, 0);
+assert.equal((await um("leo", "select count(*)::int c from truco_matches where group_id = $1", [gid])).c, 2);
+passo("admin quita todas e depois apaga todas (partidas continuam no histórico)");
+
+// mesa 1 (encerrada, com partida, jogadas, apostas por fora e votos)
+await falha("ana", "select admin_apagar_mesa($1)", [m1], /Só admin/);
+await como("leo", "select admin_apagar_mesa($1)", [m1]);
+assert.equal((await como("leo", "select 1 from mesas where id = $1", [m1])).rows.length, 0);
+assert.equal((await como("leo", "select 1 from truco_matches where id = $1", [match])).rows.length, 0);
+assert.equal((await como("leo", "select 1 from truco_events where match_id = $1", [match])).rows.length, 0);
+assert.equal((await como("leo", "select 1 from wagers where mesa_id = $1 or id in ($2, $3)", [m1, apTio, apSolta])).rows.length, 0);
+passo("admin apaga uma mesa inteira (partida, jogadas e apostas dela)");
+
+await falha("bia", "select admin_limpar_historico($1)", [gid], /Só admin/);
+await como("leo", "select admin_limpar_historico($1)", [gid]);
+for (const tabela of ["mesas", "truco_matches", "wagers", "debts"]) {
+  assert.equal((await um("leo", `select count(*)::int c from ${tabela} where group_id = $1`, [gid])).c, 0, tabela);
+}
+assert.ok((await um("leo", "select count(*)::int c from group_members where group_id = $1", [gid])).c >= 4);
+assert.ok((await um("leo", "select count(*)::int c from items where group_id = $1", [gid])).c >= 3);
+passo("admin limpa todo o histórico (pessoas e itens continuam)");
+
 console.log(`\n${ok} grupos de verificação OK`);

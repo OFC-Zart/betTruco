@@ -148,6 +148,8 @@ export interface Debt {
   quantidade: number;
   quitado_qtd: number;
   quitado_em: string | null;
+  /** encerrada pelo admin ("zerar") */
+  zerada: boolean;
   created_at: string;
 }
 
