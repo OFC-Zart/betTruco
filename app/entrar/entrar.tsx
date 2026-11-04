@@ -171,7 +171,7 @@ export function Entrar() {
             <Input
               type={verSenha ? "text" : "password"}
               autoComplete={aba === "criar" ? "new-password" : "current-password"}
-              placeholder={aba === "criar" ? "mínimo 4 caracteres" : "sua senha"}
+              placeholder={aba === "criar" ? "mínimo 6 caracteres" : "sua senha"}
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               className="pr-12"
@@ -222,7 +222,7 @@ export function Entrar() {
             </>
           )}
 
-          <Button size="lg" className="mt-5 w-full font-display text-2xl tracking-wider" disabled={ocupado || login.length < 3 || senha.length < 4 || statusLogin?.ok === false}>
+          <Button size="lg" className="mt-5 w-full font-display text-2xl tracking-wider" disabled={ocupado || login.length < 3 || senha.length < (aba === "criar" ? 6 : 1) || statusLogin?.ok === false}>
             {ocupado ? "…" : aba === "criar" ? "CRIAR E ENTRAR" : "ENTRAR"}
           </Button>
           {aba === "entrar" && (

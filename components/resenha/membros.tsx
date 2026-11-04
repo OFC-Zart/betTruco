@@ -133,8 +133,8 @@ export function AcoesMembro({
           <div className="rounded-2xl border bg-black/20 p-3">
             <div className="mb-2 text-sm font-semibold">Ele resolveu usar o app? Cria o login dele</div>
             <Input placeholder="usuário (ex.: tiojorge)" value={login} autoCapitalize="none" onChange={(e) => setLogin(e.target.value.toLowerCase())} />
-            <Input className="mt-2" placeholder="senha" value={senha} onChange={(e) => setSenha(e.target.value)} />
-            <Button className="mt-2 w-full" onClick={criarLogin} disabled={!login || senha.length < 4}>
+            <Input className="mt-2" placeholder="senha (mín. 6)" value={senha} onChange={(e) => setSenha(e.target.value)} />
+            <Button className="mt-2 w-full" onClick={criarLogin} disabled={!login || senha.length < 6}>
               Criar login (mantém o histórico)
             </Button>
           </div>

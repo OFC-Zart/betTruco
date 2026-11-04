@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ nome: st
   const { nome } = await params;
   const p = new URL(req.url).searchParams;
   return responder(async () => {
-    const tela = TELAS[nome];
+    const tela = Object.hasOwn(TELAS, nome) ? TELAS[nome] : undefined;
     if (!tela) throw new ErroApp("Tela desconhecida", 404);
     return comoUsuario(async (q) => {
       const turma = await tela.turma(q, p);

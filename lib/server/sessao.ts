@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { banco, ErroApp, type Exec } from "./db";
 
 export const COOKIE = "resenha_sessao";
-const DIAS = 365;
+const DIAS = 180;
 
 const scryptAsync = promisify(scrypt) as (s: string, salt: Buffer, n: number) => Promise<Buffer>;
 
@@ -39,6 +39,12 @@ export async function abrirSessao(q: Exec, userId: string) {
     path: "/",
     maxAge: DIAS * 86400,
   });
+}
+
+/** sha256 do token do cookie atual (pra manter só esta sessão ao trocar senha). */
+export async function hashDoTokenAtual() {
+  const token = (await cookies()).get(COOKIE)?.value;
+  return token ? sha(token) : null;
 }
 
 export async function fecharSessao(q: Exec) {
@@ -93,7 +99,15 @@ function traduzir(e: unknown): { status: number; erro: string } {
     case "22001":
       return { status: 400, erro: "Algum campo ficou inválido (confere tamanho/formato)" };
     case "22P02":
+    case "22003":
+    case "22007":
       return { status: 400, erro: "Dado inválido" };
+    case "42883": // função chamada sem os campos obrigatórios
+    case "42725":
+    case "23502":
+      return { status: 400, erro: "Faltou informação no pedido" };
+    case "23503":
+      return { status: 400, erro: "Algo que você indicou não existe mais" };
   }
   console.error(e);
   return { status: 500, erro: "Deu ruim no servidor. Tenta de novo." };

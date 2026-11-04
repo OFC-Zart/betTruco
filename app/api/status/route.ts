@@ -12,7 +12,9 @@ export async function GET() {
   try {
     await banco();
   } catch (e) {
-    return NextResponse.json({ banco: tipo, ok: false, logado: false, erro: (e as Error).message });
+    // detalhe técnico (endereço do banco etc.) fica só no log do servidor
+    console.error(e);
+    return NextResponse.json({ banco: tipo, ok: false, logado: false, erro: "Banco de dados indisponível no momento." });
   }
   const logado = await comoUsuario(async () => true).catch(() => false);
   return NextResponse.json({ banco: tipo, ok: true, logado });

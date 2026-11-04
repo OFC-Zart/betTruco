@@ -104,8 +104,8 @@ export default function ConfigPage() {
       <Titulo>🔑 Trocar senha</Titulo>
       <div className="flex flex-col gap-2">
         <Input type="password" placeholder="Senha atual" value={atual} onChange={(e) => setAtual(e.target.value)} autoComplete="current-password" />
-        <Input type="password" placeholder="Senha nova (mín. 4)" value={nova} onChange={(e) => setNova(e.target.value)} autoComplete="new-password" />
-        <Button variant="outline" onClick={trocarSenha} disabled={!atual || nova.length < 4}>
+        <Input type="password" placeholder="Senha nova (mín. 6)" value={nova} onChange={(e) => setNova(e.target.value)} autoComplete="new-password" />
+        <Button variant="outline" onClick={trocarSenha} disabled={!atual || nova.length < 6}>
           Trocar senha
         </Button>
       </div>

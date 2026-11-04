@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   applicationName: "Placar da Resenha",
   appleWebApp: { capable: true, title: "Resenha", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
+  robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {

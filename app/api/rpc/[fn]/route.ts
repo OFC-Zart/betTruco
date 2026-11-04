@@ -46,9 +46,10 @@ const RPCS: Record<string, "linha" | "valor" | "nada"> = {
 export async function POST(req: Request, { params }: { params: Promise<{ fn: string }> }) {
   const { fn } = await params;
   return responder(async () => {
-    const tipo = RPCS[fn];
+    const tipo = Object.hasOwn(RPCS, fn) ? RPCS[fn] : undefined;
     if (!tipo) throw new ErroApp("Função desconhecida", 404);
-    const corpo = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    const lido: unknown = await req.json().catch(() => ({}));
+    const corpo = (lido && typeof lido === "object" && !Array.isArray(lido) ? lido : {}) as Record<string, unknown>;
     const nomes = Object.keys(corpo).filter((k) => /^p_[a-z0-9_]+$/.test(k));
     // argumentos por nome: criar_aposta(p_group => $1, p_tipo => $2, ...)
     const args = nomes.map((k, i) => `${k} => $${i + 1}`).join(", ");
