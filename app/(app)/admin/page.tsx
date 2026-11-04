@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Cabecalho } from "@/components/resenha/cabecalho";
-import { AcoesMembro, ListaMembros } from "@/components/resenha/membros";
+import { AcoesMembro, AdicionarMembro, ListaMembros } from "@/components/resenha/membros";
 import { type MesaCompleta, nomeJogador, nomeMesa, partidaAtual } from "@/components/resenha/mesa-util";
 import { useTurma } from "@/components/resenha/turma-provider";
 import { useToast } from "@/components/resenha/toast";
@@ -46,7 +47,8 @@ export default function AdminPage() {
 }
 
 function Painel() {
-  const { turma, membros, euId, isAdmin, itens, nome, perfil, rpc, possoAgirPor, garantirPerfis } = useTurma();
+  const { turma, membros, euId, isAdmin, itens, nome, perfil, rpc, possoAgirPor, garantirPerfis, recarregar: recarregarTurma } = useTurma();
+  const router = useRouter();
   const toast = useToast();
   const { dados, recarregar } = useTela<Dados>(`/api/tela/admin?turma=${turma.id}`, 5000);
   const [secao, setSecao] = useState<Secao>("dividas");
@@ -271,6 +273,10 @@ function Painel() {
           <div className="mt-3">
             <ListaMembros lista={membros} euId={euId} aoAbrir={setAberta} />
           </div>
+          <AdicionarMembro />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Quem ainda não tem conta entra pelo link de convite (Turma → Membros).
+          </p>
           {aberta && (
             <AcoesMembro
               m={aberta}
@@ -300,6 +306,32 @@ function Painel() {
           }
         >
           <Trash2 /> Limpar todo o histórico
+        </Button>
+        <p className="mt-5 text-sm">
+          <b>Apagar a turma “{turma.nome}”:</b> some a turma inteira (mesas, apostas, dívidas, itens e a lista de membros). As
+          contas das pessoas continuam e elas seguem nas outras turmas.
+        </p>
+        <Button
+          variant="destructive"
+          className="mt-3 w-full"
+          disabled={ocupado}
+          onClick={async () => {
+            if (!confirm(`Apagar a turma "${turma.nome}" inteira?`)) return;
+            if (!confirm("Certeza? Não dá pra desfazer e some pra todo mundo da turma.")) return;
+            setOcupado(true);
+            const r = await rpc("admin_apagar_turma", { p_group: turma.id });
+            setOcupado(false);
+            if (r !== undefined) {
+              toast("Turma apagada", "ok");
+              try {
+                localStorage.removeItem("resenha:turma");
+              } catch {}
+              await recarregarTurma();
+              router.replace("/aovivo");
+            }
+          }}
+        >
+          <Trash2 /> Apagar esta turma
         </Button>
       </div>
       <Rodape />

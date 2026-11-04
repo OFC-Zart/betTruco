@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, Share2, Trash2, UserPlus } from "lucide-react";
+import { Trash2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Cabecalho } from "@/components/resenha/cabecalho";
-import { AcoesMembro, ListaMembros } from "@/components/resenha/membros";
+import { AcoesMembro, AdicionarMembro, ListaMembros } from "@/components/resenha/membros";
+import { ConviteTurma } from "@/components/resenha/turmas";
 import { useTurma } from "@/components/resenha/turma-provider";
 import { useToast } from "@/components/resenha/toast";
 import { Avatar, Chips, Label, Rodape, Selo, Titulo, Vazio } from "@/components/resenha/ui";
@@ -232,24 +233,6 @@ function Membros() {
   const toast = useToast();
   const [novoVisitante, setNovoVisitante] = useState("");
   const [aberto, setAberto] = useState<Member | null>(null);
-  const site = typeof window !== "undefined" ? location.origin : "";
-
-  async function compartilhar() {
-    const texto = `Bora pro Placar da Resenha! Cria teu usuário aqui e já cai na turma "${turma.nome}":`;
-    if (navigator.share) {
-      navigator.share({ title: "Placar da Resenha", text: texto, url: site }).catch(() => {});
-    } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(`${texto}\n${site}`)}`, "_blank", "noopener");
-    }
-  }
-  async function copiar() {
-    try {
-      await navigator.clipboard.writeText(site);
-      toast("Link copiado!", "ok");
-    } catch {
-      toast(site);
-    }
-  }
   async function criarVisitante() {
     const id = await rpc("criar_visitante", { p_group: turma.id, p_apelido: novoVisitante.trim() });
     if (id) {
@@ -264,22 +247,11 @@ function Membros() {
 
   return (
     <div className="mt-4">
-      <div className="rounded-2xl border border-ambar/30 bg-ambar/5 p-4 text-center">
-        <div className="text-sm">
-          Manda o link pra galera: quem criar usuário <b>já cai direto nesta turma</b>.
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button variant="outline" onClick={copiar}>
-            <Copy /> Copiar link
-          </Button>
-          <Button variant="ambar" onClick={compartilhar}>
-            <Share2 /> Chamar no Zap
-          </Button>
-        </div>
-      </div>
+      <ConviteTurma />
 
       <Titulo>📱 Com app ({comApp.length})</Titulo>
       <ListaMembros lista={comApp} euId={euId} aoAbrir={setAberto} />
+      {isAdmin && <AdicionarMembro />}
 
       <Titulo>🙂 Visitantes ({visitantes.length})</Titulo>
       <p className="-mt-2 mb-2 text-xs text-muted-foreground">

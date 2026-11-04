@@ -28,6 +28,18 @@ export function Entrar() {
   const [cor, setCor] = useState(CORES[0]);
   const [ocupado, setOcupado] = useState(false);
   const [semBanco, setSemBanco] = useState<string | null>(null);
+  // usuário livre? (confere enquanto digita, só na aba "Criar conta")
+  const [livre, setLivre] = useState<{ login: string; ok: boolean; motivo?: string } | null>(null);
+
+  useEffect(() => {
+    if (aba !== "criar" || login.length < 3) return;
+    const t = setTimeout(async () => {
+      const r = await postar<{ disponivel: boolean; motivo?: string }>("/api/auth/disponivel", { login }).catch(() => null);
+      if (r) setLivre({ login, ok: r.disponivel, motivo: r.motivo });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [login, aba]);
+  const statusLogin = aba === "criar" && livre?.login === login ? livre : null;
 
   // já logado? vai direto pro Ao vivo (entrando na turma do convite, se tiver)
   useEffect(() => {
@@ -36,13 +48,24 @@ export function Entrar() {
         .then((x) => x.json())
         .catch(() => null);
       if (s?.logado) {
-        if (codigo) await postar("/api/rpc/entrar_turma", { p_codigo: codigo }).catch(() => {});
+        if (codigo) {
+          try {
+            const r = await postar<{ dados: string }>("/api/rpc/entrar_turma", { p_codigo: codigo });
+            try {
+              localStorage.setItem("resenha:turma", r.dados);
+            } catch {}
+            toast("Você entrou na turma do convite ✔", "ok");
+          } catch (e) {
+            // ex.: código trocado, ou já tem alguém com o mesmo apelido na turma
+            toast((e as Error).message, "erro");
+          }
+        }
         router.replace("/aovivo");
         return;
       }
       if (s && !s.ok) setSemBanco(s.erro ?? "Banco de dados não conectado.");
     })();
-  }, [router, codigo]);
+  }, [router, codigo, toast]);
 
   function irPraTurma(turma: string | null) {
     try {
@@ -135,6 +158,11 @@ export function Entrar() {
             maxLength={20}
             onChange={(e) => setLogin(e.target.value.toLowerCase().replace(/\s/g, ""))}
           />
+          {statusLogin && (
+            <p className={cn("mt-1 text-xs", statusLogin.ok ? "text-neon" : "text-alerta")}>
+              {statusLogin.ok ? "✔ disponível" : (statusLogin.motivo ?? "✘ esse usuário já existe — escolhe outro")}
+            </p>
+          )}
           <Label>Senha</Label>
           <div className="relative">
             <Input
@@ -191,7 +219,7 @@ export function Entrar() {
             </>
           )}
 
-          <Button size="lg" className="mt-5 w-full font-display text-2xl tracking-wider" disabled={ocupado || login.length < 3 || senha.length < 4}>
+          <Button size="lg" className="mt-5 w-full font-display text-2xl tracking-wider" disabled={ocupado || login.length < 3 || senha.length < 4 || statusLogin?.ok === false}>
             {ocupado ? "…" : aba === "criar" ? "CRIAR E ENTRAR" : "ENTRAR"}
           </Button>
           {aba === "entrar" && (

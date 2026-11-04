@@ -39,6 +39,8 @@ const RPCS: Record<string, "linha" | "valor" | "nada"> = {
   admin_apagar_aposta: "nada",
   admin_apagar_mesa: "nada",
   admin_limpar_historico: "nada",
+  adicionar_membro: "valor",
+  admin_apagar_turma: "nada",
 };
 
 export async function POST(req: Request, { params }: { params: Promise<{ fn: string }> }) {

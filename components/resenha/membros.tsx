@@ -10,6 +10,37 @@ import { useTurma } from "./turma-provider";
 import { useToast } from "./toast";
 import { Avatar, Selo, Sheet } from "./ui";
 
+/** Admin coloca na turma alguém que já tem conta, digitando o usuário dele. */
+export function AdicionarMembro() {
+  const { turma, rpc, recarregar } = useTurma();
+  const toast = useToast();
+  const [login, setLogin] = useState("");
+  async function adicionar() {
+    if ((await rpc("adicionar_membro", { p_group: turma.id, p_login: login })) !== undefined) {
+      toast(`${login} entrou na turma ✔`, "ok");
+      setLogin("");
+      recarregar();
+    }
+  }
+  return (
+    <div className="mt-2">
+      <div className="mb-1 text-xs text-muted-foreground">Adicionar quem já tem conta (pelo usuário dele):</div>
+      <div className="flex gap-2">
+        <Input
+          placeholder="usuário, ex.: leozao"
+          autoCapitalize="none"
+          autoCorrect="off"
+          value={login}
+          onChange={(e) => setLogin(e.target.value.toLowerCase().replace(/\s/g, ""))}
+        />
+        <Button onClick={adicionar} disabled={login.length < 3}>
+          Adicionar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function ListaMembros({ lista, euId, aoAbrir }: { lista: Member[]; euId: string; aoAbrir: (m: Member) => void }) {
   return (
     <ul className="flex flex-col divide-y rounded-2xl border bg-card">

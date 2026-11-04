@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTurma } from "@/components/resenha/turma-provider";
 import { useToast } from "@/components/resenha/toast";
+import { CriarOuEntrarTurma } from "@/components/resenha/turmas";
 import { Avatar, Label, Rodape, Titulo } from "@/components/resenha/ui";
 import { postar } from "@/lib/api";
 import { AVATARES, CORES } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export default function ConfigPage() {
-  const { eu, turma, euId, rpc, recarregar, trocarTurma, sair } = useTurma();
+  const { eu, turma, euId, rpc, recarregar, sair } = useTurma();
   const toast = useToast();
   const router = useRouter();
   const [apelido, setApelido] = useState(eu.apelido);
@@ -23,7 +24,6 @@ export default function ConfigPage() {
   const [whats, setWhats] = useState(eu.whatsapp ?? "");
   const [atual, setAtual] = useState("");
   const [nova, setNova] = useState("");
-  const [codigo, setCodigo] = useState("");
 
   async function salvar() {
     const r = await rpc("salvar_perfil", { p_apelido: apelido, p_avatar: avatar, p_cor: cor, p_whatsapp: whats || null });
@@ -41,15 +41,6 @@ export default function ConfigPage() {
       setNova("");
     } catch (e) {
       toast((e as Error).message, "erro");
-    }
-  }
-
-  async function entrarComCodigo() {
-    const id = await rpc<string>("entrar_turma", { p_codigo: codigo });
-    if (id) {
-      setCodigo("");
-      trocarTurma(id);
-      router.push("/aovivo");
     }
   }
 
@@ -118,13 +109,11 @@ export default function ConfigPage() {
         </Button>
       </div>
 
-      <Titulo>♣ Outra turma</Titulo>
-      <div className="flex gap-2">
-        <Input placeholder="Código (ex.: BAR-7K2)" value={codigo} onChange={(e) => setCodigo(e.target.value.toUpperCase())} />
-        <Button variant="outline" onClick={entrarComCodigo} disabled={codigo.replace(/[^A-Z0-9]/g, "").length < 4}>
-          Entrar
-        </Button>
-      </div>
+      <Titulo>♣ Turmas</Titulo>
+      <p className="-mt-1 text-xs text-muted-foreground">
+        Pra trocar de turma, toque no nome dela no topo da tela (♣ {turma.nome.toUpperCase()} ▾).
+      </p>
+      <CriarOuEntrarTurma aoConcluir={() => router.push("/aovivo")} />
 
       <div className="mt-6 flex flex-col gap-2">
         <Button variant="outline" onClick={sairDaTurma}>

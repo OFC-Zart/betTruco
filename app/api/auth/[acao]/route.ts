@@ -83,6 +83,19 @@ const ACOES: Record<string, (c: Corpo) => Promise<unknown>> = {
     return { ok: true };
   },
 
+  // o cadastro pergunta enquanto a pessoa digita: esse usuário está livre?
+  async disponivel(c) {
+    const login = texto(c.login).toLowerCase();
+    if (!/^[a-z0-9_.]{3,20}$/.test(login)) {
+      return { disponivel: false, motivo: "Use 3 a 20 letras/números, sem espaço nem acento (pode . e _)" };
+    }
+    const b = await banco();
+    return b.transacao(async (q) => {
+      const [r] = await q.query("select 1 from usuarios where login = $1", [login]);
+      return { disponivel: !r };
+    });
+  },
+
   async senha(c) {
     const nova = validarSenha(c.nova);
     const hash = await hashSenha(nova);

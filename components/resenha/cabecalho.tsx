@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useTurma } from "./turma-provider";
+import { CriarOuEntrarTurma } from "./turmas";
 import { Avatar, Sheet } from "./ui";
 import { cn } from "@/lib/utils";
 
@@ -14,14 +15,16 @@ export function Cabecalho({ titulo, sub }: { titulo: string; sub?: React.ReactNo
   return (
     <header className="mb-4 flex items-start justify-between gap-3 pt-2">
       <div className="min-w-0">
+        {/* relative z-10: o título grande logo abaixo cobria o botão e roubava o toque */}
         <button
-          className="flex max-w-full items-center gap-1 text-xs font-semibold uppercase tracking-widest text-ambar"
+          className="relative z-10 flex max-w-full items-center gap-1 rounded-full border border-ambar/30 bg-ambar/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-ambar active:bg-ambar/20"
           onClick={() => setAberto(true)}
+          aria-label={`Turma ${turma.nome}: trocar ou criar turma`}
         >
           <span className="truncate">♣ {turma.nome}</span>
           <ChevronDown className="size-3.5 shrink-0" />
         </button>
-        <h1 className="font-display text-5xl leading-none tracking-wide">{titulo}</h1>
+        <h1 className="mt-1 font-display text-5xl leading-none tracking-wide">{titulo}</h1>
         {sub && <div className="mt-1 text-sm text-muted-foreground">{sub}</div>}
       </div>
       <Link href="/config" aria-label="Minhas configurações" className="mt-1">
@@ -45,12 +48,9 @@ export function Cabecalho({ titulo, sub }: { titulo: string; sub?: React.ReactNo
               <span className="text-xs text-muted-foreground">{t.papel}</span>
             </button>
           ))}
-          <Link
-            href="/entrar?passo=turma"
-            className="mt-2 rounded-xl border border-dashed px-4 py-3 text-center text-sm text-muted-foreground"
-          >
-            + Entrar em outra turma ou criar uma
-          </Link>
+          <div className="mt-2 rounded-2xl border border-dashed p-3">
+            <CriarOuEntrarTurma aoConcluir={() => setAberto(false)} />
+          </div>
         </div>
       </Sheet>
     </header>

@@ -295,4 +295,45 @@ assert.ok((await um("leo", "select count(*)::int c from group_members where grou
 assert.ok((await um("leo", "select count(*)::int c from items where group_id = $1", [gid])).c >= 3);
 passo("admin limpa todo o histórico (pessoas e itens continuam)");
 
+// --- várias turmas (0003_turmas.sql)
+const g2 = await um("ana", "select * from criar_turma('Bar do Zé')");
+assert.equal((await um("ana", "select papel from group_members where group_id = $1 and user_id = $2", [g2.id, ids.ana])).papel, "admin");
+assert.equal((await um("leo", "select is_member($1) as m", [g2.id])).m, false);
+await falha("leo", "select adicionar_membro($1, 'pedro')", [g2.id], /Só admin/);
+await falha("ana", "select adicionar_membro($1, 'ninguem')", [g2.id], /Não achei/);
+await como("ana", "select adicionar_membro($1, ' PEDRO ')", [g2.id]);
+await falha("ana", "select adicionar_membro($1, 'pedro')", [g2.id], /já está/);
+assert.equal((await um("pedro", "select is_member($1) as m", [g2.id])).m, true);
+assert.equal((await um("pedro", "select papel from group_members where group_id = $1 and user_id = $2", [g2.id, ids.pedro])).papel, "membro");
+const m2t = (await um("ana", "select criar_mesa($1, 'Fundo') as id", [g2.id])).id;
+assert.equal((await um("ana", "select numero from mesas where id = $1", [m2t])).numero, 1);
+passo("nova turma: quem cria é admin; admin adiciona quem já tem conta pelo usuário");
+
+assert.equal((await um("bia", "select entrar_turma_padrao() as id")).id, gid);
+passo("cadastro sem convite continua indo pra turma principal");
+
+await falha("pedro", "select admin_apagar_turma($1)", [g2.id], /Só admin/);
+await falha("leo", "select admin_apagar_turma($1)", [g2.id], /Só admin/);
+await como("ana", "select admin_apagar_turma($1)", [g2.id]);
+assert.equal((await como("ana", "select 1 from groups where id = $1", [g2.id])).rows.length, 0);
+assert.equal((await como("ana", "select 1 from mesas where id = $1", [m2t])).rows.length, 0);
+assert.equal((await um("pedro", "select is_member($1) as m", [gid])).m, true);
+assert.equal((await como("pedro", "select 1 from usuarios where id = $1", [ids.pedro])).rows.length, 1);
+passo("admin apaga a turma: some tudo dela, as contas e as outras turmas continuam");
+
+// --- nomes sem repetir
+await assert.rejects(() => db.query("insert into usuarios (id, login, senha_hash) values ($1, 'leo', 'x')", [ids.fora]), /unique|duplicate/i);
+await falha("bia", "select salvar_perfil('LEO ', '🍺', '#39FF14', null)", [], /Já tem alguém chamado .* na turma/);
+await como("bia", "select salvar_perfil('Bia', '🍺', '#39FF14', null)");
+const { rows: [outroLeo] } = await db.query("insert into profiles (apelido) values ('Leo') returning id");
+await db.query("insert into usuarios (id, login, senha_hash) values ($1, 'leo2', 'x')", [outroLeo.id]);
+ids.leo2 = outroLeo.id;
+await falha("leo2", "select entrar_turma_padrao()", [], /Já tem alguém chamado "Leo" nessa turma/);
+await como("leo2", "select salvar_perfil('Leozinho', '🍺', '#39FF14', null)");
+assert.equal((await um("leo2", "select entrar_turma_padrao() as id")).id, gid);
+const g3 = await um("bia", "select * from criar_turma('Sinuca')");
+await como("bia", "select criar_visitante($1, 'Pedro')", [g3.id]);
+await falha("bia", "select adicionar_membro($1, 'pedro')", [g3.id], /Já tem alguém chamado "pedro" nessa turma/);
+passo("usuário não repete no site; apelido não repete dentro da turma (cadastro, troca, adicionar)");
+
 console.log(`\n${ok} grupos de verificação OK`);
