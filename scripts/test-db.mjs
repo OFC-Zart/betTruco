@@ -222,21 +222,25 @@ await falha("leo", "select receber($1, $2, 'item', $3, 2)", [gid, ids.pedro, cer
 await como("leo", "select receber($1, $2, 'item', $3, 1)", [gid, ids.pedro, cerveja]);
 passo("Recebi (inclusive de visitante); não deixa receber mais do que devem");
 
-// compensação: bia deve 10 ao leo; leo passa a dever 4 à bia → líquido 6
+// sem compensar: bia deve 10 ao leo e leo passa a dever 4 à bia; as duas dívidas continuam de pé
 const p5 = (await um("leo",
   "select criar_aposta($1, 'texto_livre', 'mata 3', 'valorant', 'fichas', null, 4, null, null, $2) as id", [gid, ids.bia])).id;
 await como("bia", "select topar_aposta($1)", [p5]);
 await como("bia", "select marcar_resultado($1, 'B')", [p5]);
 await como("leo", "select confirmar_resultado($1)", [p5]);
-await falha("leo", "select receber($1, $2, 'fichas', null, 7)", [gid, ids.bia], /mais do que/);
-await como("leo", "select receber($1, $2, 'fichas', null, 2)", [gid, ids.bia]);
-const rows = (await como("leo",
-  "select devedor_id, quantidade, quitado_qtd from debts where unidade = 'fichas' and origem_tipo = 'wager' and devedor_id in ($1, $2) and credor_id in ($1, $2)",
-  [ids.leo, ids.bia])).rows;
-assert.equal(rows.find((r) => r.devedor_id === ids.leo).quitado_qtd, 4);
-const biaDeve = rows.find((r) => r.devedor_id === ids.bia);
-assert.equal(biaDeve.quantidade - biaDeve.quitado_qtd, 4);
-passo("receber compensa o que eu devia e abate parcial (fichas separado de cerveja)");
+const entreLeoBia = async () => {
+  const { rows } = await como("leo",
+    "select devedor_id, quantidade - quitado_qtd as resto from debts where unidade = 'fichas' and origem_tipo = 'wager' and devedor_id in ($1, $2) and credor_id in ($1, $2)",
+    [ids.leo, ids.bia]);
+  return { leoDeve: rows.find((r) => r.devedor_id === ids.leo).resto, biaDeve: rows.find((r) => r.devedor_id === ids.bia).resto };
+};
+assert.deepEqual(await entreLeoBia(), { leoDeve: 4, biaDeve: 10 });
+await falha("leo", "select receber($1, $2, 'fichas', null, 11)", [gid, ids.bia], /mais do que/);
+await como("leo", "select receber($1, $2, 'fichas', null, 7)", [gid, ids.bia]);
+assert.deepEqual(await entreLeoBia(), { leoDeve: 4, biaDeve: 3 });
+await como("bia", "select receber($1, $2, 'fichas', null, 4)", [gid, ids.leo]);
+assert.deepEqual(await entreLeoBia(), { leoDeve: 0, biaDeve: 3 });
+passo("dívidas não se compensam: cada Recebi abate só o que aquela pessoa deve");
 
 // admin
 await falha("ana", "select atualizar_turma($1, 'x', 200, 12, true)", [gid], /Só admin/);

@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Cabecalho } from "@/components/resenha/cabecalho";
 import { useTurma } from "@/components/resenha/turma-provider";
 import { useToast } from "@/components/resenha/toast";
-import { Avatar, Chips, Rodape, Sheet, Stepper, Titulo, Vazio } from "@/components/resenha/ui";
+import { Avatar, Chips, Rodape, Sheet, Stepper, Vazio } from "@/components/resenha/ui";
 import { useTela } from "@/lib/api";
-import { aberto, saldosComigo, simplificarTurma, totais } from "@/lib/acertos";
+import { aberto, pendenciasCom, totais } from "@/lib/acertos";
 import { juntarLista, numeroWhats, reais, tempoAtras, textoValor, vibrar } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Debt, Valor } from "@/lib/types";
@@ -29,9 +29,8 @@ export default function AcertosPage() {
   const souEu = dono === euId;
   const nomeDono = souEu ? "Você" : (perfil(dono)?.apelido ?? "");
 
-  const saldos = useMemo(() => saldosComigo(dividas ?? [], dono), [dividas, dono]);
-  const tot = useMemo(() => totais(saldos), [saldos]);
-  const simplificado = useMemo(() => simplificarTurma(dividas ?? []), [dividas]);
+  const pendencias = useMemo(() => pendenciasCom(dividas ?? [], dono), [dividas, dono]);
+  const tot = useMemo(() => totais(pendencias), [pendencias]);
 
   const txt = (vs: Valor[]) => juntarLista(vs.map((v) => textoValor({ ...v, quantidade: Math.abs(v.quantidade) }, itens)));
   const fichasEmReais = (vs: Valor[]) => {
@@ -48,7 +47,7 @@ export default function AcertosPage() {
     window.open(`https://wa.me/${numeroWhats(p?.whatsapp ?? null)}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
   }
 
-  const pessoas = [...saldos.keys()].filter((p) => pessoa === "todos" || p === pessoa);
+  const pessoas = [...pendencias.keys()].filter((p) => pessoa === "todos" || p === pessoa);
   const registros = (dividas ?? []).filter(
     (d) =>
       (d.devedor_id === dono || d.credor_id === dono) &&
@@ -111,7 +110,7 @@ export default function AcertosPage() {
         <div className="mt-4 flex flex-col gap-3">
           {pessoas.length === 0 && <Vazio emoji="🤝">Tudo acertado por aqui. Que turma honesta!</Vazio>}
           {pessoas.map((outro) => {
-            const vs = [...saldos.get(outro)!.values()];
+            const vs = [...pendencias.get(outro)!.values()];
             const meDeve = vs.filter((v) => v.quantidade > 0);
             const devo = vs.filter((v) => v.quantidade < 0);
             const apelido = perfil(outro)?.apelido ?? "Alguém";
@@ -169,32 +168,12 @@ export default function AcertosPage() {
         </ul>
       )}
 
-      {simplificado.length > 0 && (
-        <>
-          <Titulo>🧮 Acerto simplificado da turma</Titulo>
-          <p className="mb-2 text-xs text-muted-foreground">
-            O jeito com menos acertos pra zerar todo mundo, tipo por tipo (cerveja é cerveja, ficha é ficha).
-          </p>
-          <ul className="flex flex-col divide-y rounded-2xl border bg-card">
-            {simplificado.map((a, i) => (
-              <li key={i} className={cn("flex items-center gap-2 px-3 py-2 text-sm", (a.de === euId || a.para === euId) && "bg-neon/5")}>
-                <Avatar p={perfil(a.de)} tamanho="sm" />
-                <span className="min-w-0 flex-1 truncate">
-                  <b>{nome(a.de)}</b> paga <b>{nome(a.para)}</b>
-                </span>
-                <span className="font-placar text-ambar">{textoValor(a.valor, itens, true)}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
       <Rodape />
 
       {recebendo && (
         <Receber
           outro={recebendo}
-          valores={[...(saldos.get(recebendo)?.values() ?? [])].filter((v) => v.quantidade > 0)}
+          valores={[...(pendencias.get(recebendo)?.values() ?? [])].filter((v) => v.quantidade > 0)}
           aoFechar={() => setRecebendo(null)}
           aoReceber={async (v, q) => {
             const r = await rpc("receber", {
