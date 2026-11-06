@@ -113,7 +113,7 @@ export default function AcertosPage() {
           valor={pessoa}
           aoMudar={setPessoa}
           opcoes={[
-            { id: "todos", label: "Todo mundo" },
+            { id: "todos", label: verTodos ? "Todo mundo" : "Com qualquer pessoa" },
             ...membros.filter((m) => m.user_id !== dono).map((m) => ({ id: m.user_id, label: `${m.profile.avatar} ${m.profile.apelido}` })),
           ]}
         />
