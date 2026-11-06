@@ -1,4 +1,5 @@
 import { TurmaProvider } from "@/components/resenha/turma-provider";
+import { ManterTelaLigada } from "@/components/resenha/manter-tela-ligada";
 import { TabBar } from "@/components/resenha/tab-bar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -8,6 +9,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       <TabBar />
+      <ManterTelaLigada />
     </TurmaProvider>
   );
 }
