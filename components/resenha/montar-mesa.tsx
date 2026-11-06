@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { textoValor, vibrar } from "@/lib/format";
-import type { Dupla, Unidade } from "@/lib/types";
+import type { Dupla, Profile, Unidade } from "@/lib/types";
 import { useTurma } from "./turma-provider";
 import { useToast } from "./toast";
 import { Avatar, Chips, Label, Sheet, Stepper } from "./ui";
@@ -46,6 +46,25 @@ function useLugares(mesa: MesaCompleta, aoMudar: () => void | Promise<void>) {
   return { lugares: otimista ?? doServidor(mesa), aplicar };
 }
 
+/** Qual lugar da mesa está embaixo do dedo. */
+function lugarEm(x: number, y: number) {
+  const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-assento]");
+  return el ? Number(el.dataset.assento) : null;
+}
+
+/** O nome que acompanha o dedo, um pouco acima dele pra não ficar escondido. */
+function Fantasma({ x, y, p }: { x: number; y: number; p?: Profile }) {
+  return (
+    <div
+      className="pointer-events-none fixed z-[60] flex -translate-x-1/2 -translate-y-1/2 scale-110 flex-col items-center rounded-2xl border-2 border-neon bg-card/95 px-3 py-2 shadow-2xl"
+      style={{ left: x, top: y - 48 }}
+    >
+      <Avatar p={p} />
+      <span className="mt-1 max-w-24 truncate text-sm font-bold">{p?.apelido}</span>
+    </div>
+  );
+}
+
 /** Mesa de cima: arraste um jogador em cima de outro (ou toque nos dois) pra trocar de lugar. */
 function Tabuleiro({
   lugares,
@@ -56,6 +75,7 @@ function Tabuleiro({
   proximo,
   aoEscolherVazio,
   aoDoisToques,
+  alvoExterno,
 }: {
   lugares: Lugares;
   aoTrocar: (a: number, b: number) => void;
@@ -67,6 +87,8 @@ function Tabuleiro({
   aoEscolherVazio?: (pos: number) => void;
   /** dois toques seguidos no mesmo lugar */
   aoDoisToques?: (pos: number) => void;
+  /** lugar embaixo de um nome que está sendo arrastado da lista */
+  alvoExterno?: number | null;
 }) {
   const { euId, perfil } = useTurma();
   const arraste = useRef<{ pos: number; x: number; y: number; ativo: boolean } | null>(null);
@@ -74,11 +96,6 @@ function Tabuleiro({
   const ultimoToque = useRef<{ pos: number; em: number } | null>(null);
   const [fantasma, setFantasma] = useState<{ pos: number; x: number; y: number } | null>(null);
   const [alvo, setAlvo] = useState<number | null>(null);
-
-  const lugarEm = (x: number, y: number) => {
-    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-assento]");
-    return el ? Number(el.dataset.assento) : null;
-  };
 
   function aoApertar(e: React.PointerEvent<HTMLDivElement>, pos: number) {
     if (!lugares[pos]) return;
@@ -177,7 +194,7 @@ function Tabuleiro({
                 id && (dupla === "A" ? "border-neon/40" : "border-ambar/40"),
                 selecionado === pos && "scale-105 border-neon bg-neon/15 shadow-[0_0_20px_-4px_hsl(var(--neon)/0.8)]",
                 proximo === pos && "border-neon bg-neon/10",
-                alvo === pos && "scale-105 border-alerta bg-alerta/15",
+                (alvo === pos || alvoExterno === pos) && "scale-105 border-alerta bg-alerta/15",
                 fantasma?.pos === pos && "opacity-30",
               )}
             >
@@ -212,15 +229,7 @@ function Tabuleiro({
           );
         })}
       </div>
-      {fantasma && (
-        <div
-          className="pointer-events-none fixed z-[60] flex -translate-x-1/2 -translate-y-1/2 scale-110 flex-col items-center rounded-2xl border-2 border-neon bg-card/95 px-3 py-2 shadow-2xl"
-          style={{ left: fantasma.x, top: fantasma.y }}
-        >
-          <Avatar p={pfFantasma} />
-          <span className="mt-1 max-w-24 truncate text-sm font-bold">{pfFantasma?.apelido}</span>
-        </div>
-      )}
+      {fantasma && <Fantasma x={fantasma.x} y={fantasma.y} p={pfFantasma} />}
     </>
   );
 }
@@ -235,13 +244,18 @@ export function MontarMesa({
   ocupados: Ocupado[];
   aoMudar: () => void | Promise<void>;
 }) {
-  const { turma, membros, euId, rpc, recarregar } = useTurma();
+  const { turma, membros, euId, perfil, rpc, recarregar } = useTurma();
   const toast = useToast();
   const { lugares, aplicar } = useLugares(mesa, aoMudar);
   const [selecionado, setSelecionado] = useState<number | null>(null);
   const [proximo, setProximo] = useState<number | null>(null);
   const [visitante, setVisitante] = useState<string | null>(null);
   const [criando, setCriando] = useState(false);
+  // arrastar um nome da lista até um lugar
+  const pegando = useRef<{ id: string; x: number; y: number; ativo: boolean } | null>(null);
+  const ignorarToqueNome = useRef(false);
+  const [arrastado, setArrastado] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [alvoNome, setAlvoNome] = useState<number | null>(null);
 
   const sentados = lugares.filter(Boolean) as string[];
 
@@ -284,9 +298,50 @@ export function MontarMesa({
     aplicar(novo);
   }
   function tocarPessoa(id: string) {
+    if (ignorarToqueNome.current) {
+      ignorarToqueNome.current = false;
+      return;
+    }
     const pos = lugares.indexOf(id);
     if (pos >= 0) tirar(pos);
     else porNaMesa(id);
+  }
+  function pegarNome(e: React.PointerEvent<HTMLButtonElement>, id: string) {
+    ignorarToqueNome.current = false;
+    pegando.current = { id, x: e.clientX, y: e.clientY, ativo: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function moverNome(e: React.PointerEvent<HTMLButtonElement>) {
+    const a = pegando.current;
+    if (!a) return;
+    if (!a.ativo) {
+      if (Math.hypot(e.clientX - a.x, e.clientY - a.y) < 8) return;
+      a.ativo = true;
+      setSelecionado(null);
+      vibrar(15);
+    }
+    setArrastado({ id: a.id, x: e.clientX, y: e.clientY });
+    setAlvoNome(lugarEm(e.clientX, e.clientY));
+  }
+  function soltarNome(e: React.PointerEvent<HTMLButtonElement>) {
+    const a = pegando.current;
+    pegando.current = null;
+    setArrastado(null);
+    setAlvoNome(null);
+    if (!a?.ativo) return;
+    ignorarToqueNome.current = true;
+    const destino = lugarEm(e.clientX, e.clientY);
+    if (destino === null) return;
+    // quem já está na mesa muda de lugar; quem estava no lugar de um novo sai
+    const atual = lugares.indexOf(a.id);
+    if (atual === destino) return;
+    if (atual >= 0) trocar(atual, destino);
+    else porNaMesa(a.id, destino);
+  }
+  function cancelarNome() {
+    pegando.current = null;
+    setArrastado(null);
+    setAlvoNome(null);
   }
   function sortear() {
     const nomes = [...sentados];
@@ -332,12 +387,13 @@ export function MontarMesa({
         proximo={proximo}
         aoEscolherVazio={(pos) => setProximo(proximo === pos ? null : pos)}
         aoDoisToques={sentarAqui}
+        alvoExterno={alvoNome}
       />
       <p className="mt-2 text-center text-xs text-muted-foreground">
         {selecionado !== null ? (
           <b className="text-neon">Toque no lugar pra onde vai, ou no nome de quem entra</b>
         ) : (
-          "Dois toques num lugar e você senta. Arraste um jogador pra trocar de lugar."
+          "Arraste o nome até o lugar. Dois toques num lugar e você senta."
         )}
       </p>
 
@@ -375,10 +431,15 @@ export function MontarMesa({
                 type="button"
                 disabled={jogando}
                 onClick={() => tocarPessoa(m.user_id)}
+                onPointerDown={(e) => pegarNome(e, m.user_id)}
+                onPointerMove={moverNome}
+                onPointerUp={soltarNome}
+                onPointerCancel={cancelarNome}
                 className={cn(
-                  "flex h-12 max-w-full items-center gap-2 rounded-full border-2 pl-1.5 pr-3 text-sm font-semibold transition-all active:scale-95",
+                  "flex h-12 max-w-full touch-none select-none items-center gap-2 rounded-full border-2 pl-1.5 pr-3 text-sm font-semibold transition-all active:scale-95 sem-callout",
                   sentado ? "border-neon bg-neon/15 text-neon" : "bg-black/30",
                   jogando && "opacity-40",
+                  arrastado?.id === m.user_id && "opacity-30",
                 )}
               >
                 <Avatar p={m.profile} tamanho="sm" />
@@ -418,6 +479,7 @@ export function MontarMesa({
           </form>
         )}
       </div>
+      {arrastado && <Fantasma x={arrastado.x} y={arrastado.y} p={perfil(arrastado.id)} />}
     </>
   );
 }
