@@ -55,6 +55,7 @@ function Tabuleiro({
   aoSelecionar,
   proximo,
   aoEscolherVazio,
+  aoDoisToques,
 }: {
   lugares: Lugares;
   aoTrocar: (a: number, b: number) => void;
@@ -64,10 +65,13 @@ function Tabuleiro({
   aoSelecionar: (pos: number | null) => void;
   proximo?: number | null;
   aoEscolherVazio?: (pos: number) => void;
+  /** dois toques seguidos no mesmo lugar */
+  aoDoisToques?: (pos: number) => void;
 }) {
   const { euId, perfil } = useTurma();
   const arraste = useRef<{ pos: number; x: number; y: number; ativo: boolean } | null>(null);
   const ignorarClique = useRef(false);
+  const ultimoToque = useRef<{ pos: number; em: number } | null>(null);
   const [fantasma, setFantasma] = useState<{ pos: number; x: number; y: number } | null>(null);
   const [alvo, setAlvo] = useState<number | null>(null);
 
@@ -110,11 +114,20 @@ function Tabuleiro({
     setFantasma(null);
     setAlvo(null);
   }
-  function aoTocar(pos: number) {
+  function aoTocar(pos: number, agora: number) {
     if (ignorarClique.current) {
       ignorarClique.current = false;
       return;
     }
+    const anterior = ultimoToque.current;
+    if (aoDoisToques && anterior?.pos === pos && agora - anterior.em < 400) {
+      ultimoToque.current = null;
+      aoSelecionar(null);
+      aoDoisToques(pos);
+      return;
+    }
+    // toque que completa uma troca não conta como o primeiro dos dois toques
+    ultimoToque.current = selecionado === null ? { pos, em: agora } : null;
     if (selecionado !== null) {
       if (selecionado !== pos) aoTrocar(selecionado, pos);
       aoSelecionar(null);
@@ -150,17 +163,17 @@ function Tabuleiro({
               onPointerMove={aoMover}
               onPointerUp={aoSoltar}
               onPointerCancel={aoCancelar}
-              onClick={() => aoTocar(pos)}
+              onClick={(e) => aoTocar(pos, e.timeStamp)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  aoTocar(pos);
+                  aoTocar(pos, e.timeStamp);
                 }
               }}
               className={cn(
                 "relative flex min-h-[5.5rem] cursor-pointer select-none flex-col items-center justify-center gap-1 rounded-2xl border-2 p-1.5 text-center transition-all duration-150 sem-callout",
                 LUGAR[pos],
-                id ? "touch-none bg-card active:scale-95" : "border-dashed bg-black/20",
+                id ? "touch-none bg-card active:scale-95" : "touch-manipulation border-dashed bg-black/20",
                 id && (dupla === "A" ? "border-neon/40" : "border-ambar/40"),
                 selecionado === pos && "scale-105 border-neon bg-neon/15 shadow-[0_0_20px_-4px_hsl(var(--neon)/0.8)]",
                 proximo === pos && "border-neon bg-neon/10",
@@ -256,6 +269,20 @@ export function MontarMesa({
     setProximo(null);
     aplicar(novo);
   }
+  /** Dois toques num lugar: eu sento nele (se já estou na mesa, mudo ou troco com quem está lá). */
+  function sentarAqui(pos: number) {
+    setProximo(null);
+    const novo = [...lugares];
+    const meu = novo.indexOf(euId);
+    if (meu === pos) return;
+    if (novo[pos] && meu < 0) {
+      toast("Esse lugar já está ocupado. Dá dois toques num lugar vazio.");
+      return;
+    }
+    if (meu >= 0) novo[meu] = novo[pos];
+    novo[pos] = euId;
+    aplicar(novo);
+  }
   function tocarPessoa(id: string) {
     const pos = lugares.indexOf(id);
     if (pos >= 0) tirar(pos);
@@ -304,12 +331,13 @@ export function MontarMesa({
         aoSelecionar={setSelecionado}
         proximo={proximo}
         aoEscolherVazio={(pos) => setProximo(proximo === pos ? null : pos)}
+        aoDoisToques={sentarAqui}
       />
       <p className="mt-2 text-center text-xs text-muted-foreground">
         {selecionado !== null ? (
           <b className="text-neon">Toque no lugar pra onde vai, ou no nome de quem entra</b>
         ) : (
-          "Arraste um jogador pra cima de outro pra trocar de lugar"
+          "Dois toques num lugar e você senta. Arraste um jogador pra trocar de lugar."
         )}
       </p>
 
