@@ -71,14 +71,20 @@ await falha("ana", "select criar_visitante($1, 'tio jorge')", [gid], /Já tem al
 const prima = (await um("ana", "select criar_visitante($1, 'Prima') as id", [gid])).id;
 passo("visitante criado com nome (sem login)");
 
-// --- mesa: dono = quem criou; votação troca quem marca
+// --- mesas fixas: toda turma nasce com a Mesa 1 e a Mesa 2
+const fixas = (await como("leo", "select numero from mesas where group_id = $1 and status = 'aberta' order by numero", [gid])).rows;
+assert.deepEqual(fixas.map((x) => x.numero), [1, 2]);
+await falha("ana", "select criar_mesa($1)", [gid], /Só admin/);
 const m1 = (await um("leo", "select criar_mesa($1, 'Mesa do fundo') as id", [gid])).id;
-assert.equal((await um("leo", "select marcador_id from mesas where id = $1", [m1])).marcador_id, ids.leo);
+assert.equal((await um("leo", "select numero from mesas where id = $1", [m1])).numero, 3);
+assert.equal((await um("leo", "select marcador_id from mesas where id = $1", [m1])).marcador_id, null);
+passo("turma nasce com Mesa 1 e Mesa 2; só admin acrescenta outra");
+
+// --- quem está na turma põe gente na mesa; votação troca quem marca
 await como("leo", "select sentar($1, 0)", [m1]);
 await como("pedro", "select sentar($1, 1)", [m1]);
 await como("ana", "select sentar($1, 2)", [m1]);
-await falha("pedro", "select sentar($1, 3, $2)", [m1, tio], /dono da mesa/);
-await como("leo", "select sentar($1, 3, $2)", [m1, tio]);
+await como("pedro", "select sentar($1, 3, $2)", [m1, tio]);
 await falha("zeca", "select sentar($1, 3)", [m1], /ocupado/);
 await falha("zeca", "select votar_marcador($1, $2)", [m1, ids.zeca], /sentado/);
 await falha("ana", "select votar_marcador($1, $2)", [m1, tio], /tenha o app/);
@@ -86,9 +92,7 @@ await como("pedro", "select votar_marcador($1, $2)", [m1, ids.ana]);
 await como("ana", "select votar_marcador($1, $2)", [m1, ids.ana]);
 await como("leo", "select votar_marcador($1, $2)", [m1, ids.leo]);
 assert.equal((await um("leo", "select marcador_id from mesas where id = $1", [m1])).marcador_id, ids.ana);
-passo("votação rápida: Ana (2 votos) vira dona da mesa; visitante sentado pelo dono");
-
-await falha("pedro", "select iniciar_partida($1, 'A', 'B')", [m1], /Só o dono/);
+passo("votação rápida: Ana (2 votos) vira dona da mesa; qualquer um senta o visitante");
 
 // apostas antes de começar: cada um muda a sua; dono aposta pelo visitante
 const apZeca = (await um("zeca",
@@ -163,21 +167,32 @@ assert.equal((await um("zeca", "select status from wagers where id = $1", [apSol
 assert.equal((await um("zeca", "select devedor_id from debts where origem_id = $1", [apTio])).devedor_id, tio);
 passo("apostas por fora resolvidas sozinhas (visitante perdeu e ficou devendo)");
 
+// a mesa volta sozinha e vazia; a partida antiga guarda os jogadores dela
+const m1b = (await um("leo", "select id from mesas where group_id = $1 and numero = 3 and status = 'aberta'", [gid])).id;
+assert.notEqual(m1b, m1);
+assert.equal((await um("leo", "select status from mesas where id = $1", [m1])).status, "encerrada");
+const lugaresDe = async (id) => (await como("leo", "select user_id, posicao from mesa_players where mesa_id = $1 order by posicao", [id])).rows;
+assert.equal((await lugaresDe(m1b)).length, 0);
+assert.equal((await lugaresDe(m1)).length, 4);
+assert.equal((await um("leo", "select marcador_id from mesas where id = $1", [m1b])).marcador_id, null);
+passo("partida acabou: a mesa reabre vazia e o histórico fica intacto");
+
 await falha("ana", "select marcar_ponto($1, 'A', '+1')", [match], /acabou/);
 await falha("ana", "select encerrar_partida($1, 'A')", [match], /acabou/);
 
-// --- admin fecha mesa abandonada; número reaproveitado
-const m2 = (await um("bia", "select criar_mesa($1) as id", [gid])).id;
+// --- admin remove mesa abandonada; número reaproveitado
+const m2 = (await um("leo", "select criar_mesa($1) as id", [gid])).id;
 await como("bia", "select sentar($1, 0)", [m2]);
 await como("zeca", "select sentar($1, 1)", [m2]);
 const match2 = (await um("bia", "select iniciar_partida($1, '', '', null, null, 0) as id", [m2])).id;
 await falha("zeca", "select marcar_ponto($1, 'A', '+1')", [match2], /dono da mesa/);
-await falha("bia", "select encerrar_mesa($1)", [m2], /Partida rolando/);
+await falha("bia", "select encerrar_mesa($1)", [m2], /só admin remove/);
 await como("leo", "select encerrar_mesa($1)", [m2]);
+assert.equal((await como("leo", "select 1 from mesas where group_id = $1 and numero = 4 and status <> 'encerrada'", [gid])).rows.length, 0);
 assert.equal((await um("bia", "select status from truco_matches where id = $1", [match2])).status, "cancelada");
-const m3 = (await um("zeca", "select criar_mesa($1) as id", [gid])).id;
-assert.equal((await um("zeca", "select numero from mesas where id = $1", [m3])).numero, 1);
-passo("admin fecha mesa abandonada; número 1 reaproveitado");
+const m3 = (await um("leo", "select criar_mesa($1) as id", [gid])).id;
+assert.equal((await um("leo", "select numero from mesas where id = $1", [m3])).numero, 4);
+passo("admin remove mesa abandonada (anula a partida, não reabre); número reaproveitado");
 
 // --- palpites de texto livre
 const p = (await um("ana",
@@ -292,12 +307,16 @@ passo("admin apaga uma mesa inteira (partida, jogadas e apostas dela)");
 
 await falha("bia", "select admin_limpar_historico($1)", [gid], /Só admin/);
 await como("leo", "select admin_limpar_historico($1)", [gid]);
-for (const tabela of ["mesas", "truco_matches", "wagers", "debts"]) {
+for (const tabela of ["truco_matches", "wagers", "debts"]) {
   assert.equal((await um("leo", `select count(*)::int c from ${tabela} where group_id = $1`, [gid])).c, 0, tabela);
 }
+const depois = (await como("leo", "select numero, status from mesas where group_id = $1 order by numero", [gid])).rows;
+assert.deepEqual(depois.map((x) => x.numero), [1, 2, 3, 4]);
+assert.ok(depois.every((x) => x.status === "aberta"));
+assert.equal((await um("leo", "select count(*)::int c from mesa_players where group_id = $1", [gid])).c, 0);
 assert.ok((await um("leo", "select count(*)::int c from group_members where group_id = $1", [gid])).c >= 4);
 assert.ok((await um("leo", "select count(*)::int c from items where group_id = $1", [gid])).c >= 3);
-passo("admin limpa todo o histórico (pessoas e itens continuam)");
+passo("admin limpa todo o histórico (pessoas, itens e mesas fixas continuam)");
 
 // --- várias turmas (0003_turmas.sql)
 const g2 = await um("ana", "select * from criar_turma('Bar do Zé')");
@@ -310,7 +329,7 @@ await falha("ana", "select adicionar_membro($1, 'pedro')", [g2.id], /já está/)
 assert.equal((await um("pedro", "select is_member($1) as m", [g2.id])).m, true);
 assert.equal((await um("pedro", "select papel from group_members where group_id = $1 and user_id = $2", [g2.id, ids.pedro])).papel, "membro");
 const m2t = (await um("ana", "select criar_mesa($1, 'Fundo') as id", [g2.id])).id;
-assert.equal((await um("ana", "select numero from mesas where id = $1", [m2t])).numero, 1);
+assert.equal((await um("ana", "select numero from mesas where id = $1", [m2t])).numero, 3);
 passo("nova turma: quem cria é admin; admin adiciona quem já tem conta pelo usuário");
 
 assert.equal((await um("bia", "select entrar_turma_padrao() as id")).id, gid);
@@ -385,5 +404,54 @@ await falha("leo", "select marcar_ponto($1, 'A', 'vaza')", [pE], /não está lig
 passo("botão liga/desliga o às escuras na mão");
 
 await como("leo", "select encerrar_mesa($1)", [mE]);
+
+// --- montar a mesa de uma vez (0007_mesas_fixas.sql)
+const mesaN = async (n) => (await um("leo", "select id from mesas where group_id = $1 and numero = $2 and status <> 'encerrada'", [gid, n])).id;
+const mA = await mesaN(1);
+const mB = await mesaN(2);
+const montar = (quem, mesa, l) => como(quem, "select definir_assentos($1, $2, $3, $4, $5)", [mesa, ...l]);
+await montar("pedro", mA, [ids.leo, ids.ana, ids.pedro, ids.bia]);
+let lug = (await lugaresDe(mA)).map((x) => x.user_id);
+assert.deepEqual(lug, [ids.leo, ids.ana, ids.pedro, ids.bia]);
+assert.deepEqual((await lugaresDe(mA)).map((x) => x.posicao), [0, 1, 2, 3]);
+// troca os dois da dupla A e deixa um lugar vazio
+await montar("pedro", mA, [ids.pedro, ids.ana, ids.leo, null]);
+lug = await lugaresDe(mA);
+assert.deepEqual(lug.map((x) => x.user_id), [ids.pedro, ids.ana, ids.leo]);
+await falha("pedro", "select definir_assentos($1, $2, $2)", [mA, ids.leo], /dois lugares/);
+await falha("pedro", "select definir_assentos($1, $2)", [mA, ids.fora], /não é da turma/);
+passo("montar a mesa: troca de lugar de uma vez; recusa repetido e quem é de fora");
+
+// sentar em outra mesa livre tira da primeira
+await montar("zeca", mB, [ids.leo, ids.zeca, null, null]);
+assert.deepEqual((await lugaresDe(mA)).map((x) => x.user_id), [ids.pedro, ids.ana]);
+await como("bia", "select sentar($1, 3)", [mB]);
+assert.equal((await lugaresDe(mB)).length, 3);
+passo("quem senta em outra mesa livre sai da primeira");
+
+// com a partida rolando
+const pB = (await um("zeca", "select iniciar_partida($1, '', '', null, null, 0, 3) as id", [mB])).id;
+assert.equal((await um("zeca", "select carteador_pos from truco_matches where id = $1", [pB])).carteador_pos, 3);
+assert.equal((await um("zeca", "select marcador_id from mesas where id = $1", [mB])).marcador_id, ids.zeca);
+await falha("pedro", "select definir_assentos($1, $2)", [mA, ids.zeca], /zeca está jogando na Mesa 2/);
+await falha("pedro", "select sentar($1, 2, $2)", [mA, ids.bia], /bia|Bia/);
+await falha("pedro", "select definir_assentos($1, $2, $3)", [mB, ids.pedro, ids.ana], /só quem marca/);
+await falha("zeca", "select definir_assentos($1, $2, $3, null, null)", [mB, ids.bia, ids.zeca], /dentro da dupla/);
+await montar("zeca", mB, [ids.leo, ids.bia, null, ids.zeca]);
+assert.deepEqual((await lugaresDe(mB)).map((x) => [x.user_id, x.posicao]), [[ids.leo, 0], [ids.bia, 1], [ids.zeca, 3]]);
+await montar("leo", mB, [ids.leo, ids.zeca, ids.bia, null]);
+passo("partida rolando: quem marca troca dentro da dupla; admin muda tudo; ninguém joga em duas mesas");
+
+// anular reabre; quem saiu da turma não volta pra mesa
+await como("leo", "select remover_membro($1, $2)", [gid, ids.pedro]);
+assert.deepEqual((await lugaresDe(mA)).map((x) => x.user_id), [ids.ana]);
+await como("zeca", "select encerrar_partida($1, null)", [pB]);
+const mBnova = await mesaN(2);
+assert.notEqual(mBnova, mB);
+assert.equal((await lugaresDe(mBnova)).length, 0);
+await montar("zeca", mBnova, [ids.leo, ids.zeca, ids.bia, null]);
+await como("zeca", "select iniciar_partida($1, '', '', null, null, 0, 2) as id", [mBnova]);
+assert.equal((await um("zeca", "select carteador_pos from truco_matches where mesa_id = $1", [mBnova])).carteador_pos, 2);
+passo("anular a partida reabre a mesa; quem sai da turma sai das mesas livres");
 
 console.log(`\n${ok} grupos de verificação OK`);

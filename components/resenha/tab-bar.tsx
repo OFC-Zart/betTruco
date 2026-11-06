@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Beer, Radio, ShieldCheck, Target, Users } from "lucide-react";
+import { PALPITES_ATIVO } from "@/lib/recursos";
 import { cn } from "@/lib/utils";
 import { useTurma } from "./turma-provider";
 
 const ABAS = [
   { href: "/aovivo", nome: "Ao vivo", Icone: Radio, ativo: ["/aovivo", "/mesa"] },
-  { href: "/palpites", nome: "Palpites", Icone: Target, ativo: ["/palpites"] },
+  ...(PALPITES_ATIVO ? [{ href: "/palpites", nome: "Palpites", Icone: Target, ativo: ["/palpites"] }] : []),
   { href: "/acertos", nome: "Acertos", Icone: Beer, ativo: ["/acertos"] },
   { href: "/turma", nome: "Turma", Icone: Users, ativo: ["/turma", "/config"] },
 ];
@@ -23,7 +24,7 @@ export function TabBar() {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 bg-black/85 backdrop-blur pb-safe">
       <div className="linha-ouro" />
-      <div className={cn("mx-auto grid max-w-md", isAdmin ? "grid-cols-5" : "grid-cols-4")}>
+      <div className="mx-auto grid max-w-md" style={{ gridTemplateColumns: `repeat(${abas.length}, minmax(0, 1fr))` }}>
         {abas.map(({ href, nome, Icone, ativo }) => {
           const on = ativo.some((a) => path.startsWith(a));
           return (
@@ -31,7 +32,7 @@ export function TabBar() {
               key={href}
               href={href}
               className={cn(
-                "flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold tracking-wide transition-colors",
+                "flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold tracking-wide transition-all active:scale-90",
                 on ? "text-neon" : "text-muted-foreground",
               )}
             >

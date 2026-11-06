@@ -92,6 +92,10 @@
     filter: drop-shadow(0 0 10px hsl(var(--neon) / 0.35));
   }
   /* respiro pro relógio/notch do iPhone quando aberto como app */
+  .sem-callout {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+  }
   .pt-topo {
     padding-top: calc(env(safe-area-inset-top) + 0.75rem);
   }

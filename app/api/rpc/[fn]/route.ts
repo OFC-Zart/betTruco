@@ -1,4 +1,5 @@
 import { ErroApp } from "@/lib/server/db";
+import { anotar, frear } from "@/lib/server/freio";
 import { comoUsuario, responder } from "@/lib/server/sessao";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ const RPCS: Record<string, "linha" | "valor" | "nada"> = {
   remover_item: "nada",
   criar_mesa: "valor",
   sentar: "nada",
+  definir_assentos: "nada",
   levantar: "nada",
   votar_marcador: "valor",
   iniciar_partida: "valor",
@@ -48,6 +50,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ fn: str
   return responder(async () => {
     const tipo = Object.hasOwn(RPCS, fn) ? RPCS[fn] : undefined;
     if (!tipo) throw new ErroApp("Função desconhecida", 404);
+    // o código de convite é curto: limita os chutes (em transação à parte, pra contar mesmo quando erra)
+    if (fn === "entrar_turma") {
+      await comoUsuario(async (q, uid) => {
+        const chave = `codigo:${uid}`;
+        await frear(q, [{ chave, max: 15, minutos: 15 }]);
+        await anotar(q, [chave]);
+      });
+    }
     const lido: unknown = await req.json().catch(() => ({}));
     const corpo = (lido && typeof lido === "object" && !Array.isArray(lido) ? lido : {}) as Record<string, unknown>;
     const nomes = Object.keys(corpo).filter((k) => /^p_[a-z0-9_]+$/.test(k));

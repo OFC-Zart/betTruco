@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Cabecalho } from "@/components/resenha/cabecalho";
 import { AcoesMembro, AdicionarMembro, ListaMembros } from "@/components/resenha/membros";
-import { ConviteTurma } from "@/components/resenha/turmas";
+import { ConviteTurma, EntrarComCodigo } from "@/components/resenha/turmas";
 import { useTurma } from "@/components/resenha/turma-provider";
 import { useToast } from "@/components/resenha/toast";
 import { Avatar, Chips, Label, Rodape, Selo, Titulo, Vazio } from "@/components/resenha/ui";
@@ -44,6 +44,7 @@ export default function TurmaPage() {
           { id: "config", label: isAdmin ? "⚙️ Config" : "⚙️ Regras" },
         ]}
       />
+      <EntrarComCodigo className="mt-2" />
       {aba === "ranking" && <Ranking partidas={partidas} apostas={apostas} dividas={dividas} />}
       {aba === "historico" && <Historico partidas={partidas} apostas={apostas} />}
       {aba === "membros" && <Membros />}
@@ -67,7 +68,7 @@ function Ranking({ partidas, apostas, dividas }: { partidas: PartidaComJogadores
     <div className="mt-4 flex flex-col gap-3">
       <Podio titulo="🃏 Rei do Truco" sub="mais vitórias" linhas={r.reiDoTruco} nomeLinha={nomeLinha} avatares={avatares} vazio="Ninguém ganhou nada ainda." />
       <Podio titulo="🤝 Dupla do Barulho" sub="melhor dupla" linhas={r.melhorDupla} nomeLinha={nomeLinha} avatares={avatares} vazio="Joguem em dupla pra aparecer aqui." />
-      <Podio titulo="🔮 Vidente" sub="% de acerto nos palpites" linhas={r.vidente} nomeLinha={nomeLinha} avatares={avatares} vazio="Nenhum palpite resolvido ainda." />
+      <Podio titulo="🔮 Vidente" sub="% de acerto nas apostas" linhas={r.vidente} nomeLinha={nomeLinha} avatares={avatares} vazio="Nenhuma aposta resolvida ainda." />
       <Podio
         titulo={`${r.cerveja?.emoji ?? "🍺"} Patrocinador Oficial`}
         sub={`quem mais deve ${r.cerveja?.nome.toLowerCase() ?? "cerveja"}`}

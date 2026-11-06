@@ -80,6 +80,15 @@ export default {
           "0%, 100%": { transform: "translateY(0) rotate(-6deg)" },
           "50%": { transform: "translateY(-14px) rotate(6deg)" },
         },
+        entrar: {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        cair: {
+          "0%": { opacity: "0", transform: "translateY(-20px) rotate(0deg)" },
+          "15%": { opacity: "1" },
+          "100%": { opacity: "0", transform: "translateY(260px) rotate(300deg)" },
+        },
       },
       animation: {
         "ao-vivo": "ao-vivo 1.6s ease-in-out infinite",
@@ -87,6 +96,8 @@ export default {
         flash: "flash 700ms ease-out",
         subir: "subir 200ms ease-out",
         flutuar: "flutuar 7s ease-in-out infinite",
+        entrar: "entrar 280ms ease-out both",
+        cair: "cair 1.6s ease-in both",
       },
     },
   },

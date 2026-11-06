@@ -1,161 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Undo2, UserPlus, X } from "lucide-react";
+import { Undo2, Volume2, VolumeX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { tempoAtras, textoValor, vibrar } from "@/lib/format";
-import type { Dupla, MesaPlayer, TipoJogada, TrucoEvent, TrucoMatch, Unidade } from "@/lib/types";
+import type { Dupla, MesaPlayer, TipoJogada, TrucoEvent, TrucoMatch } from "@/lib/types";
 import { useTurma } from "./turma-provider";
 import { useToast } from "./toast";
-import { Avatar, Chips, Label, Quedas, Selo, Sheet, Stepper } from "./ui";
+import { Avatar, Quedas, Selo, Sheet } from "./ui";
 import { type MesaCompleta, nomeJogador, sugestaoDupla } from "./mesa-util";
 
-/** Quem pode organizar a mesa (sentar outros, visitantes): dono, quem criou ou admin. */
-export function useOrganiza(mesa: MesaCompleta) {
-  const { euId, isAdmin } = useTurma();
-  return mesa.marcador_id === euId || mesa.criado_por === euId || isAdmin;
-}
-
-// Lugares em volta da mesa: 0 embaixo, 1 esquerda, 2 em cima, 3 direita.
-// Parceiros ficam de frente (0 e 2 = dupla A; 1 e 3 = dupla B).
-const LUGAR: Record<number, string> = {
-  0: "col-start-2 row-start-3",
-  1: "col-start-1 row-start-2",
-  2: "col-start-2 row-start-1",
-  3: "col-start-3 row-start-2",
-};
-
-export function Assentos({ mesa, aoMudar }: { mesa: MesaCompleta; aoMudar: () => void }) {
-  const { euId, isAdmin, perfil, rpc } = useTurma();
-  const organiza = useOrganiza(mesa);
-  const [escolhendoPos, setEscolhendoPos] = useState<number | null>(null);
-  const souJogador = mesa.mesa_players.some((p) => p.user_id === euId);
-  const aberta = mesa.status === "aberta" || (isAdmin && mesa.status === "em_jogo");
-
-  async function sentar(pos: number, quem?: string) {
-    const r = await rpc("sentar", { p_mesa: mesa.id, p_posicao: pos, p_quem: quem ?? null });
-    if (r !== undefined) {
-      vibrar(25);
-      aoMudar();
-    }
-  }
-  async function levantar(pos: number) {
-    if ((await rpc("levantar", { p_mesa: mesa.id, p_posicao: pos })) !== undefined) aoMudar();
-  }
-
-  return (
-    <>
-      <div className="grid grid-cols-3 grid-rows-3 gap-2">
-        <div className="col-start-2 row-start-2 flex aspect-square flex-col items-center justify-center rounded-3xl border-2 border-neon/30 bg-[radial-gradient(circle,hsl(140_60%_14%),hsl(140_50%_7%))] text-center shadow-[inset_0_0_30px_rgba(0,0,0,0.6)]">
-          <span className="text-2xl">♠<span className="text-alerta">♥</span></span>
-          <span className="font-display text-sm tracking-widest text-neon/80">A × B</span>
-        </div>
-        {[0, 1, 2, 3].map((pos) => {
-          const p = mesa.mesa_players.find((x) => x.posicao === pos);
-          const dupla: Dupla = pos % 2 === 0 ? "A" : "B";
-          const pf = p ? perfil(p.user_id) : undefined;
-          const podeTirar = p && aberta && (p.user_id === euId || organiza);
-          return (
-            <div
-              key={pos}
-              className={cn(
-                "flex min-h-24 flex-col items-center justify-center gap-1 rounded-2xl border p-2 text-center",
-                LUGAR[pos],
-                p ? "bg-card" : "border-dashed bg-black/20",
-              )}
-            >
-              <span className={cn("text-[10px] font-bold tracking-widest", dupla === "A" ? "text-neon" : "text-ambar")}>DUPLA {dupla}</span>
-              {p ? (
-                <>
-                  <Avatar p={pf} tamanho="sm" />
-                  <span className="w-full truncate text-xs font-semibold">{p.user_id === euId ? "Você" : nomeJogador(p, perfil)}</span>
-                  {pf?.visitante && <span className="text-[9px] uppercase tracking-wider text-muted-foreground">visitante</span>}
-                  {podeTirar && (
-                    <button onClick={() => levantar(pos)} className="text-[10px] text-muted-foreground underline">
-                      {p.user_id === euId ? "levantar" : "tirar"}
-                    </button>
-                  )}
-                </>
-              ) : aberta ? (
-                <>
-                  <button onClick={() => sentar(pos)} className="rounded-lg bg-neon/15 px-2 py-1 text-xs font-bold text-neon">
-                    {souJogador ? "Mudar pra cá" : "Sentar"}
-                  </button>
-                  {organiza && (
-                    <button onClick={() => setEscolhendoPos(pos)} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <UserPlus className="size-3" /> pôr alguém
-                    </button>
-                  )}
-                </>
-              ) : (
-                <span className="text-xs text-muted-foreground">vazio</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      {escolhendoPos !== null && (
-        <PorAlguem
-          mesa={mesa}
-          aoFechar={() => setEscolhendoPos(null)}
-          aoEscolher={async (id) => {
-            await sentar(escolhendoPos, id);
-            setEscolhendoPos(null);
-          }}
-        />
-      )}
-    </>
-  );
-}
-
-/** Dono da mesa coloca alguém sentado: amigo da turma ou visitante (sem app). */
-function PorAlguem({ mesa, aoFechar, aoEscolher }: { mesa: MesaCompleta; aoFechar: () => void; aoEscolher: (id: string) => void }) {
-  const { turma, membros, euId, rpc, recarregar } = useTurma();
-  const [nome, setNome] = useState("");
-  const sentados = new Set(mesa.mesa_players.map((p) => p.user_id));
-  const livres = membros.filter((m) => !sentados.has(m.user_id) && m.user_id !== euId);
-
-  async function criarVisitante() {
-    const id = await rpc<string>("criar_visitante", { p_group: turma.id, p_apelido: nome.trim() });
-    if (id) {
-      await recarregar();
-      aoEscolher(id);
-    }
-  }
-
-  return (
-    <Sheet aberto aoFechar={aoFechar} titulo="Quem senta aqui?">
-      <Label>Amigo sem app (visitante)</Label>
-      <div className="flex gap-2">
-        <Input autoFocus placeholder="Nome, ex.: Tio Jorge" value={nome} maxLength={24} onChange={(e) => setNome(e.target.value)} />
-        <Button onClick={criarVisitante} disabled={!nome.trim()}>
-          Criar
-        </Button>
-      </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Ele entra no placar, nas apostas e nos acertos. Quem marca a mesa aposta e recebe por ele.
-      </p>
-      {livres.length > 0 && (
-        <>
-          <Label>Ou alguém da turma</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {livres.map((m) => (
-              <button key={m.user_id} onClick={() => aoEscolher(m.user_id)} className="flex items-center gap-2 rounded-xl border bg-black/30 p-2 text-left">
-                <Avatar p={m.profile} tamanho="sm" />
-                <span className="min-w-0 flex-1 truncate text-sm">{m.profile.apelido}</span>
-                {m.profile.visitante && <span className="text-[9px] uppercase text-muted-foreground">visit.</span>}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </Sheet>
-  );
-}
-
-/** Votação rápida de quem marca os pontos (o dono da mesa). */
+/** Quem marca os pontos: uma linha só; trocar abre a votação rápida. */
 export function Votacao({
   mesa,
   votos,
@@ -167,6 +23,7 @@ export function Votacao({
 }) {
   const { euId, perfil, rpc, nome } = useTurma();
   const toast = useToast();
+  const [aberto, setAberto] = useState(false);
   const souJogador = mesa.mesa_players.some((p) => p.user_id === euId);
   const candidatos = [
     ...mesa.mesa_players.filter((p) => !perfil(p.user_id)?.visitante).map((p) => p.user_id),
@@ -189,150 +46,56 @@ export function Votacao({
     <div className="mt-3 rounded-2xl border bg-card p-3">
       <div className="flex items-center gap-2">
         <span className="text-xl">🎙️</span>
-        <div className="min-w-0 flex-1">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">Quem marca os pontos</div>
-          <div className="truncate font-semibold">
-            {dono ? (mesa.marcador_id === euId ? "Você é o dono da mesa" : `${dono.apelido} é o dono da mesa`) : "Ninguém ainda — qualquer jogador marca"}
-          </div>
+        <div className="min-w-0 flex-1 truncate text-sm font-semibold">
+          {dono ? (mesa.marcador_id === euId ? "Você marca os pontos" : `${dono.apelido} marca os pontos`) : "Qualquer jogador marca"}
         </div>
+        {souJogador && candidatos.length > 1 && (
+          <button type="button" onClick={() => setAberto(!aberto)} className="shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold text-ambar">
+            {aberto ? "Fechar" : "Trocar"}
+          </button>
+        )}
       </div>
-      {souJogador && mesa.status !== "encerrada" && candidatos.length > 1 && (
-        <>
-          <div className="mb-2 mt-3 text-xs text-muted-foreground">Votação rápida — toque em quem você quer que marque:</div>
-          <div className="flex flex-wrap gap-2">
-            {candidatos.map((id) => (
-              <button
-                key={id}
-                onClick={() => votar(id)}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm",
-                  meuVoto === id ? "border-neon bg-neon/15 text-neon" : "bg-black/30",
-                )}
-              >
-                <Avatar p={perfil(id)} tamanho="sm" className="size-5 text-xs" />
-                {id === euId ? "Eu" : perfil(id)?.apelido}
-                {conta(id) > 0 && <span className="font-placar text-xs text-ambar">{conta(id)}</span>}
-              </button>
-            ))}
-          </div>
-        </>
+      {aberto && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {candidatos.map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => votar(id)}
+              className={cn(
+                "flex h-11 items-center gap-1.5 rounded-full border px-3 text-sm transition-transform active:scale-95",
+                meuVoto === id ? "border-neon bg-neon/15 text-neon" : "bg-black/30",
+              )}
+            >
+              <Avatar p={perfil(id)} tamanho="sm" className="size-6 text-xs" />
+              {id === euId ? "Eu" : perfil(id)?.apelido}
+              {conta(id) > 0 && <span className="font-placar text-xs text-ambar">{conta(id)}</span>}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-export function IniciarPartida({ mesa, aoMudar }: { mesa: MesaCompleta; aoMudar: () => void }) {
-  const { turma, perfil, itensAtivos, rpc } = useTurma();
-  const toast = useToast();
-  const [aberto, setAberto] = useState(false);
-  const [nomeA, setNomeA] = useState("");
-  const [nomeB, setNomeB] = useState("");
-  const [valendo, setValendo] = useState<string>("nada");
-  const [qtd, setQtd] = useState(1);
-  const [carteador, setCarteador] = useState<string>("");
-  const [alvo, setAlvo] = useState(String(turma.truco_pontos_alvo));
-  const [md3, setMd3] = useState(turma.truco_melhor_de_3 ? "sim" : "nao");
-
-  const temA = mesa.mesa_players.some((p) => p.dupla === "A");
-  const temB = mesa.mesa_players.some((p) => p.dupla === "B");
-
-  function abrir() {
-    setNomeA(sugestaoDupla(mesa.mesa_players, "A", perfil));
-    setNomeB(sugestaoDupla(mesa.mesa_players, "B", perfil));
-    const cerveja = itensAtivos.find((i) => /cerveja/i.test(i.nome));
-    setValendo(cerveja?.id ?? "nada");
-    setCarteador(String(Math.min(...mesa.mesa_players.map((p) => p.posicao))));
-    setAberto(true);
-  }
-
-  async function comecar() {
-    const unidade: Unidade | null = valendo === "nada" ? null : valendo === "fichas" ? "fichas" : "item";
-    const r = await rpc("iniciar_partida", {
-      p_mesa: mesa.id,
-      p_nome_a: nomeA,
-      p_nome_b: nomeB,
-      p_unidade: unidade,
-      p_item: unidade === "item" ? valendo : null,
-      p_qtd: unidade ? qtd : 0,
-      p_carteador: Number(carteador),
-      p_pontos_alvo: Number(alvo),
-      p_melhor_de_3: md3 === "sim",
-    });
-    if (r !== undefined) {
-      vibrar([30, 50, 30]);
-      toast("Valendo! Boa sorte 🃏", "ok");
-      setAberto(false);
-      aoMudar();
-    }
-  }
-
-  return (
-    <>
-      <Button size="lg" className="mt-4 w-full font-display text-2xl tracking-wider" disabled={!temA || !temB} onClick={abrir}>
-        COMEÇAR PARTIDA
-      </Button>
-      <p className="mt-2 text-center text-xs text-muted-foreground">
-        {!temA || !temB
-          ? "Precisa de pelo menos uma pessoa em cada dupla."
-          : "Depois de começar, as apostas desta mesa ficam travadas (não dá pra retirar)."}
-      </p>
-      <Sheet aberto={aberto} aoFechar={() => setAberto(false)} titulo="Começar partida">
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label>Dupla A</Label>
-            <Input value={nomeA} maxLength={24} onChange={(e) => setNomeA(e.target.value)} />
-          </div>
-          <div>
-            <Label>Dupla B</Label>
-            <Input value={nomeB} maxLength={24} onChange={(e) => setNomeB(e.target.value)} />
-          </div>
-        </div>
-        <Label>O que está valendo (por pessoa)</Label>
-        <Chips
-          valor={valendo}
-          aoMudar={setValendo}
-          opcoes={[
-            { id: "nada", label: "🫡 Só a honra" },
-            { id: "fichas", label: "🪙 Fichas" },
-            ...itensAtivos.map((i) => ({ id: i.id, label: `${i.emoji} ${i.nome}` })),
-          ]}
-        />
-        {valendo !== "nada" && (
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Cada perdedor paga</span>
-            <Stepper valor={qtd} aoMudar={setQtd} />
-          </div>
-        )}
-        <Label>Quem dá a primeira carta</Label>
-        <Chips
-          valor={carteador}
-          aoMudar={setCarteador}
-          opcoes={[...mesa.mesa_players].sort((a, b) => a.posicao - b.posicao).map((p) => ({ id: String(p.posicao), label: `🃏 ${nomeJogador(p, perfil)}` }))}
-        />
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label>Até</Label>
-            <Chips valor={alvo} aoMudar={setAlvo} opcoes={["12", "15", "24"].map((x) => ({ id: x, label: `${x} pts` }))} />
-          </div>
-          <div>
-            <Label>Melhor de 3</Label>
-            <Chips valor={md3} aoMudar={setMd3} opcoes={[{ id: "sim", label: "Sim" }, { id: "nao", label: "Não" }]} />
-          </div>
-        </div>
-        <Button size="lg" className="mt-6 w-full font-display text-2xl tracking-wider" onClick={comecar}>
-          VALENDO! 🃏
-        </Button>
-      </Sheet>
-    </>
-  );
-}
-
-const BOTOES: { tipo: TipoJogada; label: string; pts: number }[] = [
+// quanto a mão está valendo: o marcador escolhe aqui e toca na dupla que levou
+const MAOS: { tipo: TipoJogada; label: string; pts: number }[] = [
+  { tipo: "+1", label: "NORMAL", pts: 1 },
   { tipo: "truco", label: "TRUCO", pts: 3 },
   { tipo: "seis", label: "SEIS", pts: 6 },
   { tipo: "nove", label: "NOVE", pts: 9 },
   { tipo: "doze", label: "DOZE", pts: 12 },
 ];
+
+const CHAVE_NARRAR = "resenha:narrar";
+
+function falar(texto: string) {
+  if (!("speechSynthesis" in window)) return;
+  const fala = new SpeechSynthesisUtterance(texto.replaceAll("&", " e "));
+  fala.lang = "pt-BR";
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(fala);
+}
 
 export function Placar({
   mesa,
@@ -348,6 +111,22 @@ export function Placar({
   const { perfil, itens, rpc } = useTurma();
   const [ocupado, setOcupado] = useState(false);
   const [encerrando, setEncerrando] = useState(false);
+  const [mao, setMao] = useState<TipoJogada>("+1");
+  const [narrar, setNarrar] = useState(() => {
+    try {
+      return localStorage.getItem(CHAVE_NARRAR) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const valorMao = MAOS.find((m) => m.tipo === mao) ?? MAOS[0];
+  const nomeDupla = (d: Dupla) => (d === "A" ? p.nome_dupla_a : p.nome_dupla_b);
+
+  function narrarPlacar(r: TrucoMatch) {
+    if (!narrar) return;
+    if (r.status !== "em_jogo") falar(r.vencedor ? `${r.vencedor === "A" ? r.nome_dupla_a : r.nome_dupla_b} venceu!` : "Partida anulada");
+    else falar(`${r.nome_dupla_a} ${r.placar_a}, ${r.nome_dupla_b} ${r.placar_b}`);
+  }
 
   async function jogar(dupla: Dupla | null, tipo: TipoJogada) {
     if (ocupado) return;
@@ -357,8 +136,26 @@ export function Placar({
     setOcupado(false);
     if (r) {
       if (r.status !== "em_jogo") vibrar([60, 40, 60, 40, 200]);
+      if (dupla && tipo !== "-1") setMao("+1");
+      if (tipo !== "carta") narrarPlacar(r);
       aoAtualizar(r);
     }
+  }
+
+  function escolherMao(tipo: TipoJogada, label: string) {
+    const nova = mao === tipo ? "+1" : tipo;
+    setMao(nova);
+    vibrar(15);
+    if (narrar && nova !== "+1") falar(label);
+  }
+
+  function alternarNarrar() {
+    const novo = !narrar;
+    setNarrar(novo);
+    try {
+      localStorage.setItem(CHAVE_NARRAR, novo ? "1" : "0");
+    } catch {}
+    if (novo) falar("Narração ligada");
   }
 
   async function encerrar(v: Dupla | null) {
@@ -370,53 +167,101 @@ export function Placar({
   }
 
   const jogadores = (d: Dupla) =>
-    mesa.mesa_players
-      .filter((x) => x.dupla === d)
-      .sort((a, b) => a.posicao - b.posicao)
-      .map((x) => nomeJogador(x, perfil))
-      .join(" & ");
+    mesa.mesa_players.filter((x) => x.dupla === d).sort((a, b) => a.posicao - b.posicao);
 
   return (
     <div className={cn("rounded-3xl border bg-card p-3 transition-colors", p.escuras && "border-alerta/50 shadow-[0_0_40px_-12px_hsl(var(--alerta)/0.6)]")}>
-      <div className="grid grid-cols-2 gap-3">
+      {/* placar */}
+      <div className="grid grid-cols-2 gap-2">
         {(["A", "B"] as const).map((d) => {
           const pts = d === "A" ? p.placar_a : p.placar_b;
           const onze = pts === p.pontos_alvo - 1;
+          const lista = jogadores(d);
+          const nomeProprio = nomeDupla(d) !== sugestaoDupla(mesa.mesa_players, d, perfil);
           return (
-            <div key={d} className="flex flex-col">
-              <div key={`${d}${pts}`} className="animate-flash rounded-2xl px-1 py-2 text-center">
-                <div className={cn("truncate font-display text-2xl tracking-wide", d === "A" ? "text-neon" : "text-ambar")}>
-                  {d === "A" ? p.nome_dupla_a : p.nome_dupla_b}
-                </div>
-                <div className="truncate text-xs text-muted-foreground">{jogadores(d)}</div>
-                <div className="my-1 font-placar text-8xl leading-none tabular-nums text-foreground brilho-neon">
-                  <span className="inline-block animate-pulo">{pts}</span>
-                </div>
-                {p.melhor_de_3 && <Quedas n={d === "A" ? p.quedas_a : p.quedas_b} className="justify-center" />}
-                {onze && !p.escuras && <Selo cor="alerta" className="mt-1">MÃO DE ONZE</Selo>}
-              </div>
-              {podeEditar && !p.escuras && (
-                <div className="mt-2 flex flex-col gap-2">
-                  <Button size="lg" className="h-16 font-placar text-3xl" disabled={ocupado} onClick={() => jogar(d, "+1")}>
-                    +1
-                  </Button>
-                  <div className="grid grid-cols-2 gap-2">
-                    {BOTOES.map((b) => (
-                      <Button key={b.tipo} variant="ambar" className="h-12 flex-col gap-0 font-display text-lg leading-none tracking-wider" disabled={ocupado} onClick={() => jogar(d, b.tipo)}>
-                        {b.label}
-                        <span className="font-placar text-[10px]">+{b.pts}</span>
-                      </Button>
-                    ))}
-                  </div>
-                  <Button variant="outline" size="sm" disabled={ocupado || pts === 0} onClick={() => jogar(d, "-1")}>
-                    −1 (correção)
-                  </Button>
-                </div>
+            <div
+              key={`${d}${pts}`}
+              className={cn(
+                "flex animate-flash flex-col items-center rounded-2xl border px-1.5 py-2.5 text-center",
+                d === "A" ? "border-neon/30" : "border-ambar/30",
               )}
+            >
+              {nomeProprio && (
+                <div className={cn("w-full truncate font-display text-base leading-tight tracking-wide", d === "A" ? "text-neon" : "text-ambar")}>{nomeDupla(d)}</div>
+              )}
+              <div className="flex min-h-[3.25rem] w-full flex-col justify-center">
+                {lista.length ? (
+                  lista.map((x) => (
+                    <div key={x.id} className={cn("break-words text-lg font-bold leading-tight", !nomeProprio && (d === "A" ? "text-neon" : "text-ambar"))}>
+                      {x.posicao === p.carteador_pos && <span title="Dá as cartas">🃏 </span>}
+                      {nomeJogador(x, perfil)}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-lg font-bold">{nomeDupla(d)}</div>
+                )}
+              </div>
+              <div className="mt-1 font-placar text-8xl leading-none tabular-nums text-foreground brilho-neon">
+                <span className="inline-block animate-pulo">{pts}</span>
+              </div>
+              {p.melhor_de_3 && <Quedas n={d === "A" ? p.quedas_a : p.quedas_b} className="justify-center" />}
+              {onze && !p.escuras && <Selo cor="alerta" className="mt-1.5">MÃO DE ONZE</Selo>}
             </div>
           );
         })}
       </div>
+
+      {podeEditar && !p.escuras && (
+        <>
+          {/* quanto vale a mão */}
+          <div className="mt-4 text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Quanto vale a mão</div>
+          <div className="mt-2 grid grid-cols-5 gap-1.5">
+            {MAOS.map((m) => {
+              const on = mao === m.tipo;
+              return (
+                <button
+                  key={m.tipo}
+                  type="button"
+                  disabled={ocupado}
+                  aria-pressed={on}
+                  onClick={() => escolherMao(m.tipo, m.label)}
+                  className={cn(
+                    "flex h-16 flex-col items-center justify-center rounded-2xl border-2 transition-all duration-150 active:scale-95",
+                    on
+                      ? m.pts === 1
+                        ? "border-neon bg-neon/20 text-neon"
+                        : "scale-105 border-alerta bg-alerta text-white shadow-[0_0_20px_-4px_hsl(var(--alerta))]"
+                      : "bg-black/30 text-muted-foreground",
+                  )}
+                >
+                  <span className="font-placar text-2xl leading-none">{m.pts}</span>
+                  <span className="mt-0.5 font-display text-xs leading-none tracking-wide">{m.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* quem levou: dois botões grandes e bem separados */}
+          <div className="mt-2 text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Quem levou</div>
+          <div className="mt-2 grid grid-cols-2 gap-5">
+            {(["A", "B"] as const).map((d) => (
+              <Button
+                key={d}
+                variant={d === "A" ? "default" : "ambar"}
+                disabled={ocupado}
+                onClick={() => jogar(d, mao)}
+                className={cn(
+                  "h-32 flex-col gap-1 rounded-3xl px-2 shadow-lg transition-transform active:scale-95",
+                  valorMao.pts > 1 && "ring-2 ring-alerta ring-offset-2 ring-offset-card",
+                )}
+              >
+                <span className="font-placar text-6xl leading-none">+{valorMao.pts}</span>
+                <span className="w-full truncate text-sm font-bold leading-tight">{nomeDupla(d)}</span>
+              </Button>
+            ))}
+          </div>
+        </>
+      )}
 
       {p.escuras ? (
         <PainelEscuras p={p} podeEditar={podeEditar} ocupado={ocupado} jogar={jogar} />
@@ -424,13 +269,40 @@ export function Placar({
         podeEditar && (
           <Button
             variant="outline"
-            className="mt-3 w-full border-alerta/40 font-display text-lg tracking-widest text-alerta"
+            className="mt-4 h-12 w-full border-alerta/40 font-display text-lg tracking-widest text-alerta"
             disabled={ocupado}
             onClick={() => jogar(null, "escuras")}
           >
             🌑 ÀS ESCURAS
           </Button>
         )
+      )}
+
+      {podeEditar && (
+        <>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <Button variant="outline" className="h-12 px-1 text-xs" disabled={ocupado || p.placar_a === 0} onClick={() => jogar("A", "-1")}>
+              −1 <span className="max-w-[4rem] truncate">{nomeDupla("A")}</span>
+            </Button>
+            <Button variant="outline" className="h-12" disabled={ocupado} onClick={() => jogar(null, "desfazer")}>
+              <Undo2 /> Voltar
+            </Button>
+            <Button variant="outline" className="h-12 px-1 text-xs" disabled={ocupado || p.placar_b === 0} onClick={() => jogar("B", "-1")}>
+              −1 <span className="max-w-[4rem] truncate">{nomeDupla("B")}</span>
+            </Button>
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <Button variant="outline" className="h-11 px-1 text-xs" disabled={ocupado} onClick={() => jogar(null, "carta")}>
+              🃏 Passar
+            </Button>
+            <Button variant="outline" className="h-11 px-1 text-xs" onClick={alternarNarrar} aria-pressed={narrar}>
+              {narrar ? <Volume2 className="text-neon" /> : <VolumeX />} Narrar
+            </Button>
+            <Button variant="outline" className="h-11 px-1 text-xs text-alerta" onClick={() => setEncerrando(true)}>
+              <X /> Encerrar
+            </Button>
+          </div>
+        </>
       )}
 
       <div className="mt-3 flex items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">
@@ -447,23 +319,9 @@ export function Placar({
         )}
       </div>
 
-      {podeEditar && (
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <Button variant="outline" disabled={ocupado} onClick={() => jogar(null, "desfazer")}>
-            <Undo2 /> Desfazer
-          </Button>
-          <Button variant="outline" disabled={ocupado} onClick={() => jogar(null, "carta")}>
-            🃏 Passar
-          </Button>
-          <Button variant="outline" className="text-alerta" onClick={() => setEncerrando(true)}>
-            <X /> Encerrar
-          </Button>
-        </div>
-      )}
-
       <Sheet aberto={encerrando} aoFechar={() => setEncerrando(false)} titulo="Encerrar partida">
         <p className="mb-4 text-sm text-muted-foreground">
-          Quem ganhou? Isso fecha a mesa, gera as dívidas e resolve as apostas de “qual dupla ganha”.
+          Quem ganhou? Isso gera as dívidas e resolve as apostas de “qual dupla ganha”. A mesa continua aberta pra próxima.
         </p>
         <div className="flex flex-col gap-2">
           <Button size="lg" onClick={() => encerrar("A")}>
@@ -497,7 +355,7 @@ export function OrdemMesa({ players, carteadorPos }: { players: MesaPlayer[]; ca
           <div
             key={x.id}
             className={cn(
-              "flex flex-1 flex-col items-center gap-1 rounded-xl border p-2 text-center",
+              "flex flex-1 flex-col items-center gap-1 rounded-xl border p-2 text-center transition-colors",
               x.posicao === carteadorPos ? "border-neon bg-neon/10" : "bg-black/20",
             )}
           >

@@ -2,19 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Cabecalho } from "@/components/resenha/cabecalho";
 import { CardAposta } from "@/components/resenha/apostas";
 import { InstalarApp } from "@/components/resenha/instalar-app";
 import { useTurma } from "@/components/resenha/turma-provider";
-import { AoVivo, Quedas, Rodape, Selo, Sheet, Titulo, Vazio } from "@/components/resenha/ui";
+import { AoVivo, Quedas, Rodape, Selo, Titulo, Vazio } from "@/components/resenha/ui";
 import { type MesaCompleta, nomeJogador, partidaAtual } from "@/components/resenha/mesa-util";
 import { useTela } from "@/lib/api";
 import { textoValor, vibrar } from "@/lib/format";
-import type { WagerComMesa } from "@/lib/types";
+import type { Dupla, WagerComMesa } from "@/lib/types";
 
 interface Dados {
   mesas: MesaCompleta[];
@@ -22,11 +20,9 @@ interface Dados {
 }
 
 export default function AoVivoPage() {
-  const { turma, perfil, itens, rpc, garantirPerfis } = useTurma();
-  const router = useRouter();
+  const { turma, isAdmin, perfil, itens, rpc, garantirPerfis, euId } = useTurma();
   const { dados, recarregar } = useTela<Dados>(`/api/tela/aovivo?turma=${turma.id}`, 2500);
   const [criando, setCriando] = useState(false);
-  const [nomeNova, setNomeNova] = useState("");
   const mesas = dados?.mesas ?? null;
   const apostas = dados?.apostas ?? [];
 
@@ -38,17 +34,18 @@ export default function AoVivoPage() {
     ]);
   }, [dados, garantirPerfis]);
 
-  async function criarMesa() {
-    const id = await rpc<string>("criar_mesa", { p_group: turma.id, p_nome: nomeNova || null });
+  async function novaMesa() {
+    setCriando(true);
+    const id = await rpc<string>("criar_mesa", { p_group: turma.id });
+    setCriando(false);
     if (id) {
       vibrar(30);
-      setCriando(false);
-      setNomeNova("");
-      router.push(`/mesa/${id}`);
+      recarregar();
     }
   }
 
   const rolando = mesas?.filter((m) => m.status === "em_jogo").length ?? 0;
+  const minhaMesa = mesas?.find((m) => m.mesa_players.some((p) => p.user_id === euId));
 
   return (
     <>
@@ -57,19 +54,17 @@ export default function AoVivoPage() {
         sub={
           mesas
             ? rolando
-              ? `${rolando} ${rolando === 1 ? "mesa rolando" : "mesas rolando"} agora · toque pra ver`
-              : "Nenhuma partida rolando agora"
+              ? `${rolando} ${rolando === 1 ? "mesa rolando" : "mesas rolando"} agora`
+              : minhaMesa
+                ? `Você está na Mesa ${minhaMesa.numero}`
+                : "Toque numa mesa e escolha quem joga"
             : "…"
         }
       />
 
       <InstalarApp chave="resenha:instalar-dispensado" className="mb-4" />
 
-      <Button size="lg" className="w-full font-display text-2xl tracking-wider" onClick={() => setCriando(true)}>
-        <Plus className="!size-6" /> NOVA MESA
-      </Button>
-
-      <div className="mt-4 flex flex-col gap-3">
+      <div className="flex flex-col gap-3">
         {mesas === null && (
           <>
             <div className="h-36 animate-pulse rounded-2xl bg-card" />
@@ -77,41 +72,34 @@ export default function AoVivoPage() {
           </>
         )}
         {mesas?.length === 0 && (
-          <Vazio emoji="🃏">
-            Nenhuma mesa aberta. Cria uma, senta e chama a galera — quem não for jogar acompanha o placar daqui.
-          </Vazio>
+          <Vazio emoji="🃏">{isAdmin ? "Nenhuma mesa. Adiciona uma aqui embaixo." : "Nenhuma mesa ainda. Pede pro admin adicionar."}</Vazio>
         )}
-        {mesas?.map((m) => (
-          <CardMesa key={m.id} m={m} apostas={apostas.filter((a) => a.mesa_id === m.id).length} perfil={perfil} itens={itens} />
+        {mesas?.map((m, i) => (
+          <div key={m.numero} className="animate-entrar" style={{ animationDelay: `${i * 60}ms` }}>
+            <CardMesa m={m} apostas={apostas.filter((a) => a.mesa_id === m.id).length} perfil={perfil} itens={itens} />
+          </div>
         ))}
       </div>
 
-      <Titulo>🎯 Palpites abertos</Titulo>
-      {apostas.length === 0 ? (
-        <Vazio emoji="🎯">
-          Nada valendo agora. <Link href="/palpites" className="text-neon">Lançar um palpite</Link>
-        </Vazio>
-      ) : (
-        <div className="sem-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
-          {apostas.map((w) => (
-            <div key={w.id} className="w-[85%] shrink-0 snap-center">
-              <CardAposta w={w} aoMudar={recarregar} />
-            </div>
-          ))}
-        </div>
+      {isAdmin && (
+        <Button variant="outline" className="mt-3 w-full border-dashed text-muted-foreground" disabled={criando} onClick={novaMesa}>
+          <Plus /> Adicionar outra mesa
+        </Button>
+      )}
+
+      {apostas.length > 0 && (
+        <>
+          <Titulo>💰 Apostas abertas</Titulo>
+          <div className="sem-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
+            {apostas.map((w) => (
+              <div key={w.id} className="w-[85%] shrink-0 snap-center">
+                <CardAposta w={w} aoMudar={recarregar} />
+              </div>
+            ))}
+          </div>
+        </>
       )}
       <Rodape />
-
-      <Sheet aberto={criando} aoFechar={() => setCriando(false)} titulo="Nova mesa">
-        <p className="mb-3 text-sm text-muted-foreground">
-          O número é automático e você começa como <b className="text-foreground">dono da mesa</b> (quem marca os pontos).
-          Depois a mesa pode votar em outra pessoa.
-        </p>
-        <Input placeholder='Nome (opcional), ex.: "Mesa do fundo"' value={nomeNova} maxLength={30} onChange={(e) => setNomeNova(e.target.value)} />
-        <Button size="lg" className="mt-4 w-full font-display text-2xl tracking-wider" onClick={criarMesa}>
-          ABRIR MESA DE TRUCO 🃏
-        </Button>
-      </Sheet>
     </>
   );
 }
@@ -132,23 +120,42 @@ function CardMesa({
   const carteador = p ? m.mesa_players.find((x) => x.posicao === p.carteador_pos) : undefined;
   const onze = p && (p.placar_a === p.pontos_alvo - 1 || p.placar_b === p.pontos_alvo - 1);
   const dono = perfil(m.marcador_id);
+  const sentados = m.mesa_players.length;
+  const nomes = (d: Dupla) =>
+    m.mesa_players
+      .filter((x) => x.dupla === d)
+      .sort((a, b) => a.posicao - b.posicao)
+      .map((x) => nomeJogador(x, perfil));
 
   return (
     <Link
       href={`/mesa/${m.id}`}
-      className={`block rounded-2xl border bg-card p-4 transition-colors active:bg-accent ${jogando ? "border-neon/30 shadow-[0_0_24px_-8px_hsl(var(--neon)/0.35)]" : ""}`}
+      className={`block rounded-2xl border bg-card p-4 transition-all active:scale-[0.98] active:bg-accent ${jogando ? "border-neon/30 shadow-[0_0_24px_-8px_hsl(var(--neon)/0.35)]" : ""}`}
     >
       <div className="flex items-center gap-2">
         <span className="font-display text-2xl tracking-wide">MESA {m.numero}</span>
         {m.nome && <span className="truncate text-sm text-muted-foreground">· {m.nome}</span>}
-        <span className="ml-auto">{jogando ? <AoVivo /> : <Selo cor="ambar">SENTANDO {m.mesa_players.length}/4</Selo>}</span>
+        <span className="ml-auto flex items-center gap-1">
+          {jogando ? (
+            <AoVivo />
+          ) : sentados === 0 ? (
+            <Selo cor="cinza">LIVRE</Selo>
+          ) : sentados === 4 ? (
+            <Selo>PRONTA</Selo>
+          ) : (
+            <Selo cor="ambar">{sentados}/4</Selo>
+          )}
+          {!jogando && <ChevronRight className="size-5 text-muted-foreground" />}
+        </span>
       </div>
 
       {jogando ? (
         <>
           <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
             <div className="min-w-0 text-right">
-              <div className="truncate font-semibold">{p.nome_dupla_a}</div>
+              {nomes("A").map((n) => (
+                <div key={n} className="break-words font-semibold leading-tight">{n}</div>
+              ))}
               {p.melhor_de_3 && <Quedas n={p.quedas_a} className="justify-end" />}
             </div>
             <div className="font-placar text-5xl tabular-nums leading-none">
@@ -157,7 +164,9 @@ function CardMesa({
               <span key={`b${p.placar_b}`} className="inline-block animate-pulo text-neon brilho-neon">{p.placar_b}</span>
             </div>
             <div className="min-w-0">
-              <div className="truncate font-semibold">{p.nome_dupla_b}</div>
+              {nomes("B").map((n) => (
+                <div key={n} className="break-words font-semibold leading-tight">{n}</div>
+              ))}
               {p.melhor_de_3 && <Quedas n={p.quedas_b} />}
             </div>
           </div>
@@ -171,16 +180,25 @@ function CardMesa({
             {p.escuras ? <Selo cor="alerta">🌑 ÀS ESCURAS</Selo> : onze && <Selo cor="alerta">MÃO DE ONZE</Selo>}
           </div>
         </>
+      ) : sentados === 0 ? (
+        <div className="mt-2 text-sm text-muted-foreground">Toque pra escolher quem joga</div>
       ) : (
-        <div className="mt-2 text-sm text-muted-foreground">
-          {m.mesa_players.length ? m.mesa_players.map((x) => nomeJogador(x, perfil)).join(", ") : "Mesa vazia — chega mais!"}
+        <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm font-semibold">
+          <span className="min-w-0 break-words text-right text-neon">{nomes("A").join(" & ") || "—"}</span>
+          <span className="font-display text-muted-foreground">×</span>
+          <span className="min-w-0 break-words text-ambar">{nomes("B").join(" & ") || "—"}</span>
         </div>
       )}
-      <div className="mt-2 flex items-center gap-3 text-xs">
-        {dono && <span className="text-muted-foreground">🎙️ {dono.apelido} marca</span>}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs empty:hidden">
+        {jogando && dono && <span className="text-muted-foreground">🎙️ {dono.apelido} marca</span>}
+        {!jogando && m.ultima?.vencedor && (
+          <span className="min-w-0 truncate text-muted-foreground">
+            🏆 Última: {m.ultima.vencedor === "A" ? m.ultima.nome_dupla_a : m.ultima.nome_dupla_b}
+          </span>
+        )}
         {apostas > 0 && (
           <span className="font-semibold text-ambar">
-            💰 {apostas} {apostas === 1 ? "aposta por fora" : "apostas por fora"}
+            💰 {apostas} {apostas === 1 ? "aposta" : "apostas"}
           </span>
         )}
       </div>

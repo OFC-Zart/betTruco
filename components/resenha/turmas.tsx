@@ -1,20 +1,64 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Share2 } from "lucide-react";
+import { Copy, KeyRound, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import type { Group } from "@/lib/types";
 import { useTurma } from "./turma-provider";
 import { useToast } from "./toast";
 import { Label } from "./ui";
+
+/** Campo pra quem recebeu só o código da turma, sem o link. */
+export function EntrarComCodigo({ className, aoConcluir }: { className?: string; aoConcluir?: () => void }) {
+  const { rpc, trocarTurma } = useTurma();
+  const toast = useToast();
+  const [codigo, setCodigo] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+
+  async function entrar(e: React.FormEvent) {
+    e.preventDefault();
+    setOcupado(true);
+    const id = await rpc<string>("entrar_turma", { p_codigo: codigo });
+    setOcupado(false);
+    if (id) {
+      toast("Entrou na turma ✔", "ok");
+      setCodigo("");
+      trocarTurma(id);
+      aoConcluir?.();
+    }
+  }
+
+  return (
+    <form onSubmit={entrar} className={cn("rounded-2xl border border-ambar/30 bg-ambar/5 p-3", className)}>
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ambar">
+        <KeyRound className="size-4" /> Entrar em uma turma com código
+      </div>
+      <div className="flex gap-2">
+        <Input
+          aria-label="Código da turma"
+          placeholder="BAR-7K2"
+          value={codigo}
+          autoCapitalize="characters"
+          autoCorrect="off"
+          maxLength={12}
+          onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+          className="font-placar text-lg tracking-widest"
+        />
+        <Button variant="ambar" disabled={ocupado || codigo.replace(/[^A-Z0-9]/g, "").length < 4}>
+          Entrar
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 /** Criar uma turma nova (vira admin dela) ou entrar em outra com o código. */
 export function CriarOuEntrarTurma({ aoConcluir }: { aoConcluir?: () => void }) {
   const { rpc, trocarTurma } = useTurma();
   const toast = useToast();
   const [nome, setNome] = useState("");
-  const [codigo, setCodigo] = useState("");
   const [ocupado, setOcupado] = useState(false);
 
   async function criar() {
@@ -28,20 +72,9 @@ export function CriarOuEntrarTurma({ aoConcluir }: { aoConcluir?: () => void }) 
       aoConcluir?.();
     }
   }
-  async function entrar() {
-    setOcupado(true);
-    const id = await rpc<string>("entrar_turma", { p_codigo: codigo });
-    setOcupado(false);
-    if (id) {
-      toast("Entrou na turma ✔", "ok");
-      setCodigo("");
-      trocarTurma(id);
-      aoConcluir?.();
-    }
-  }
-
   return (
     <div className="flex flex-col gap-1">
+      <EntrarComCodigo aoConcluir={aoConcluir} />
       <Label>Criar uma turma nova</Label>
       <div className="flex gap-2">
         <Input placeholder="Ex.: Bar do Zé, Firma, Futebol de quarta" value={nome} maxLength={40} onChange={(e) => setNome(e.target.value)} />
@@ -50,19 +83,6 @@ export function CriarOuEntrarTurma({ aoConcluir }: { aoConcluir?: () => void }) 
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">Cada turma tem suas mesas, apostas, acertos e ranking separados.</p>
-      <Label>Entrar numa turma com código</Label>
-      <div className="flex gap-2">
-        <Input
-          placeholder="BAR-7K2"
-          value={codigo}
-          autoCapitalize="characters"
-          onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-          className="font-placar tracking-widest"
-        />
-        <Button variant="outline" onClick={entrar} disabled={ocupado || codigo.replace(/[^A-Z0-9]/g, "").length < 4}>
-          Entrar
-        </Button>
-      </div>
     </div>
   );
 }

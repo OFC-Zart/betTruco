@@ -8,29 +8,34 @@ import { useTurma } from "@/components/resenha/turma-provider";
 import { useToast } from "@/components/resenha/toast";
 import { Avatar, Chips, Rodape, Sheet, Stepper, Vazio } from "@/components/resenha/ui";
 import { useTela } from "@/lib/api";
-import { aberto, pendenciasCom, totais } from "@/lib/acertos";
+import { aberto, paresPendentes, pendenciasCom, somaPares, totais } from "@/lib/acertos";
 import { juntarLista, numeroWhats, reais, tempoAtras, textoValor, vibrar } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Debt, Valor } from "@/lib/types";
 
 type Filtro = "pendentes" | "quitados" | "tudo";
+const TODOS = "turma";
 
 export default function AcertosPage() {
-  const { turma, euId, itens, nome, perfil, membros, rpc, visitantesQueCuido } = useTurma();
+  const { turma, euId, itens, nome, perfil, membros, rpc, visitantesQueCuido, possoAgirPor } = useTurma();
   const toast = useToast();
   const { dados, recarregar } = useTela<{ dividas: Debt[] }>(`/api/tela/acertos?turma=${turma.id}`, 5000);
   const dividas = dados?.dividas ?? null;
   const [filtro, setFiltro] = useState<Filtro>("pendentes");
   const [pessoa, setPessoa] = useState<string>("todos");
-  const [recebendo, setRecebendo] = useState<string | null>(null);
-  // de quem estou vendo os acertos: eu, ou um visitante que eu cuido
+  const [recebendo, setRecebendo] = useState<{ devedor: string; credor: string } | null>(null);
+  // de quem estou vendo os acertos: a turma toda, eu, ou um visitante que eu cuido
   const [dono, setDono] = useState<string>(euId);
   const cuidados = visitantesQueCuido();
+  const verTodos = dono === TODOS;
   const souEu = dono === euId;
   const nomeDono = souEu ? "Você" : (perfil(dono)?.apelido ?? "");
 
   const pendencias = useMemo(() => pendenciasCom(dividas ?? [], dono), [dividas, dono]);
   const tot = useMemo(() => totais(pendencias), [pendencias]);
+  const pares = useMemo(() => paresPendentes(dividas ?? []), [dividas]);
+  const paresVisiveis = pares.filter((x) => pessoa === "todos" || x.devedor === pessoa || x.credor === pessoa);
+  const totalTurma = useMemo(() => somaPares(paresVisiveis), [paresVisiveis]);
 
   const txt = (vs: Valor[]) => juntarLista(vs.map((v) => textoValor({ ...v, quantidade: Math.abs(v.quantidade) }, itens)));
   const fichasEmReais = (vs: Valor[]) => {
@@ -38,9 +43,9 @@ export default function AcertosPage() {
     return f && turma.valor_ficha_centavos ? ` (≈ ${reais(Math.abs(f.quantidade) * turma.valor_ficha_centavos)})` : "";
   };
 
-  function cobrar(outro: string, devendo: Valor[]) {
+  function cobrar(outro: string, devendo: Valor[], credor: string = dono) {
     const p = perfil(outro);
-    const quem = souEu ? "me" : `pro ${nomeDono}`;
+    const quem = credor === euId ? "me" : `pro ${perfil(credor)?.apelido ?? ""}`;
     const msg =
       `Fala, ${p?.apelido ?? ""}! 🍻 Pelo Placar da Resenha (${turma.nome}) você tá devendo ${quem} ${txt(devendo)}. ` +
       `Bora acertar na próxima? 😅`;
@@ -50,7 +55,7 @@ export default function AcertosPage() {
   const pessoas = [...pendencias.keys()].filter((p) => pessoa === "todos" || p === pessoa);
   const registros = (dividas ?? []).filter(
     (d) =>
-      (d.devedor_id === dono || d.credor_id === dono) &&
+      (verTodos || d.devedor_id === dono || d.credor_id === dono) &&
       (pessoa === "todos" || d.devedor_id === pessoa || d.credor_id === pessoa) &&
       (filtro === "tudo" || (filtro === "quitados" ? aberto(d) === 0 : aberto(d) > 0)),
   );
@@ -59,30 +64,40 @@ export default function AcertosPage() {
     <>
       <Cabecalho titulo="ACERTOS" sub="Quem deve o quê pra quem" />
 
-      {cuidados.length > 0 && (
-        <div className="mb-3">
-          <div className="mb-1 text-xs text-muted-foreground">Vendo os acertos de:</div>
-          <Chips
-            valor={dono}
-            aoMudar={(v) => {
-              setDono(v);
-              setPessoa("todos");
-            }}
-            opcoes={[{ id: euId, label: "🙋 Mim" }, ...cuidados.map((m) => ({ id: m.user_id, label: `${m.profile.avatar} ${m.profile.apelido}` }))]}
-          />
+      <div className="mb-3">
+        <Chips
+          valor={dono}
+          aoMudar={(v) => {
+            setDono(v);
+            setPessoa("todos");
+          }}
+          opcoes={[
+            { id: euId, label: "🙋 Os meus" },
+            { id: TODOS, label: "👥 Todos da turma" },
+            ...cuidados.map((m) => ({ id: m.user_id, label: `${m.profile.avatar} ${m.profile.apelido}` })),
+          ]}
+        />
+      </div>
+
+      {verTodos ? (
+        <div className="rounded-2xl border border-ambar/30 bg-ambar/5 p-3">
+          <div className="text-xs font-semibold uppercase tracking-wider text-ambar">
+            {pessoa === "todos" ? "Em aberto na turma" : `Em aberto com ${perfil(pessoa)?.apelido ?? ""}`}
+          </div>
+          <Totais vs={totalTurma} itens={itens} cor="text-ambar" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-neon/30 bg-neon/5 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-neon">{souEu ? "Tenho" : "Tem"} a receber</div>
+            <Totais vs={tot.receber} itens={itens} cor="text-neon" />
+          </div>
+          <div className="rounded-2xl border border-alerta/30 bg-alerta/5 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-alerta">{souEu ? "Tenho" : "Tem"} a pagar</div>
+            <Totais vs={tot.pagar} itens={itens} cor="text-alerta" />
+          </div>
         </div>
       )}
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-neon/30 bg-neon/5 p-3">
-          <div className="text-xs font-semibold uppercase tracking-wider text-neon">{souEu ? "Tenho" : "Tem"} a receber</div>
-          <Totais vs={tot.receber} itens={itens} cor="text-neon" />
-        </div>
-        <div className="rounded-2xl border border-alerta/30 bg-alerta/5 p-3">
-          <div className="text-xs font-semibold uppercase tracking-wider text-alerta">{souEu ? "Tenho" : "Tem"} a pagar</div>
-          <Totais vs={tot.pagar} itens={itens} cor="text-alerta" />
-        </div>
-      </div>
 
       <div className="mt-4 flex flex-col gap-2">
         <Chips
@@ -106,7 +121,38 @@ export default function AcertosPage() {
 
       {dividas === null && <div className="mt-4 h-32 animate-pulse rounded-2xl bg-card" />}
 
-      {dividas && filtro === "pendentes" && (
+      {dividas && filtro === "pendentes" && verTodos && (
+        <div className="mt-4 flex flex-col gap-3">
+          {paresVisiveis.length === 0 && <Vazio emoji="🤝">Ninguém devendo nada. Que turma honesta!</Vazio>}
+          {paresVisiveis.map((x) => {
+            const posso = possoAgirPor(x.credor);
+            return (
+              <div key={`${x.devedor}>${x.credor}`} className="rounded-2xl border bg-card p-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex shrink-0 -space-x-2">
+                    <Avatar p={perfil(x.devedor)} />
+                    <Avatar p={perfil(x.credor)} />
+                  </span>
+                  <div className="min-w-0 flex-1 text-sm leading-snug">
+                    <b>{nome(x.devedor)}</b> deve <b className="text-ambar">{txt(x.valores)}</b> pra <b>{nome(x.credor)}</b>
+                    <span className="text-xs text-muted-foreground">{fichasEmReais(x.valores)}</span>
+                  </div>
+                </div>
+                {posso && (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button onClick={() => setRecebendo({ devedor: x.devedor, credor: x.credor })}>Recebi</Button>
+                    <Button variant="outline" onClick={() => cobrar(x.devedor, x.valores, x.credor)}>
+                      <MessageCircle /> Cobrar
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {dividas && filtro === "pendentes" && !verTodos && (
         <div className="mt-4 flex flex-col gap-3">
           {pessoas.length === 0 && <Vazio emoji="🤝">Tudo acertado por aqui. Que turma honesta!</Vazio>}
           {pessoas.map((outro) => {
@@ -135,7 +181,7 @@ export default function AcertosPage() {
                 </div>
                 {meDeve.length > 0 && (
                   <div className="mt-3 grid grid-cols-2 gap-2">
-                    <Button onClick={() => setRecebendo(outro)}>Recebi</Button>
+                    <Button onClick={() => setRecebendo({ devedor: outro, credor: dono })}>Recebi</Button>
                     <Button variant="outline" onClick={() => cobrar(outro, meDeve)}>
                       <MessageCircle /> Cobrar
                     </Button>
@@ -172,17 +218,17 @@ export default function AcertosPage() {
 
       {recebendo && (
         <Receber
-          outro={recebendo}
-          valores={[...(pendencias.get(recebendo)?.values() ?? [])].filter((v) => v.quantidade > 0)}
+          outro={recebendo.devedor}
+          valores={pares.find((x) => x.devedor === recebendo.devedor && x.credor === recebendo.credor)?.valores ?? []}
           aoFechar={() => setRecebendo(null)}
           aoReceber={async (v, q) => {
             const r = await rpc("receber", {
               p_group: turma.id,
-              p_devedor: recebendo,
+              p_devedor: recebendo.devedor,
               p_unidade: v.unidade,
               p_item: v.item_id,
               p_qtd: q,
-              p_credor: souEu ? null : dono,
+              p_credor: recebendo.credor === euId ? null : recebendo.credor,
             });
             if (r !== undefined) {
               vibrar(30);

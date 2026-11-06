@@ -8,6 +8,14 @@ const PARTIDAS = `coalesce((select jsonb_agg(to_jsonb(tm) order by tm.created_at
 
 const MESA_COMPLETA = `select m.*, ${JOGADORES} as mesa_players, ${PARTIDAS} as truco_matches from mesas m`;
 
+// resultado da última partida daquele número de mesa
+const ULTIMA = `(
+  select jsonb_build_object('nome_dupla_a', tm.nome_dupla_a, 'nome_dupla_b', tm.nome_dupla_b, 'vencedor', tm.vencedor)
+  from truco_matches tm join mesas m2 on m2.id = tm.mesa_id
+  where m2.group_id = m.group_id and m2.numero = m.numero and tm.status = 'encerrada'
+  order by tm.encerrada_em desc limit 1
+) as ultima`;
+
 // aposta + resumo da mesa dela (número e nomes das duplas)
 const APOSTA_COM_MESA = `
   select w.*, (
@@ -45,7 +53,7 @@ export const TELAS: Record<string, Tela> = {
     turma: turmaDoParametro,
     async dados(q, _p, t) {
       const [mesas, apostas] = await emSequencia([
-        () => lista(q, `${MESA_COMPLETA} where m.group_id = $1 and m.status <> 'encerrada' order by m.numero`, [t]),
+        () => lista(q, `select m.*, ${JOGADORES} as mesa_players, ${PARTIDAS} as truco_matches, ${ULTIMA} from mesas m where m.group_id = $1 and m.status <> 'encerrada' order by m.numero`, [t]),
         () => lista(q, `${APOSTA_COM_MESA} where w.group_id = $1 and w.status in ${ABERTAS} order by w.created_at desc limit 30`, [t]),
       ]);
       return { mesas, apostas };
@@ -58,11 +66,11 @@ export const TELAS: Record<string, Tela> = {
       if (!r) throw new ErroApp("Mesa não encontrada", 404);
       return r.group_id;
     },
-    async dados(q, p) {
+    async dados(q, p, t) {
       const id = p.get("id");
-      const mesa = await umSo<{ truco_matches: { id: string; status: string }[] }>(q, `${MESA_COMPLETA} where m.id = $1`, [id]);
+      const mesa = await umSo<{ numero: number; truco_matches: { id: string; status: string }[] }>(q, `${MESA_COMPLETA} where m.id = $1`, [id]);
       const partida = mesa?.truco_matches.find((x) => x.status === "em_jogo") ?? mesa?.truco_matches[0];
-      const [votos, apostas, eventos, dividas] = await emSequencia([
+      const [votos, apostas, eventos, dividas, ocupados, proxima] = await emSequencia([
         () => lista(q, "select eleitor_id, candidato_id from mesa_votos where mesa_id = $1", [id]),
         () => lista(q, `${APOSTA_COM_MESA} where w.mesa_id = $1 order by w.created_at desc`, [id]),
         async () =>
@@ -73,8 +81,18 @@ export const TELAS: Record<string, Tela> = {
           partida && partida.status === "encerrada"
             ? lista(q, "select * from debts where origem_tipo = 'truco' and origem_id = $1", [partida.id])
             : [],
+        // quem está sentado nas outras mesas da turma
+        () => lista(
+          q,
+          `select mp.user_id, m.numero, m.status from mesa_players mp join mesas m on m.id = mp.mesa_id
+           where m.group_id = $1 and m.status <> 'encerrada' and m.id <> $2`,
+          [t, id],
+        ),
+        // a mesa que reabriu depois desta partida
+        async () =>
+          umSo(q, `${MESA_COMPLETA} where m.group_id = $1 and m.numero = $2 and m.status <> 'encerrada' and m.id <> $3`, [t, mesa?.numero, id]),
       ]);
-      return { mesa, votos, apostas, eventos, dividas };
+      return { mesa, votos, apostas, eventos, dividas, ocupados, proxima };
     },
   },
 

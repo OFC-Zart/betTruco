@@ -88,7 +88,7 @@ function Painel() {
 
       <div className="grid grid-cols-4 gap-2 text-center">
         <Numero n={membros.length} rotulo="pessoas" />
-        <Numero n={mesas.filter((m) => m.status !== "encerrada").length} rotulo="mesas abertas" />
+        <Numero n={mesas.filter((m) => m.status !== "encerrada").length} rotulo="mesas" />
         <Numero n={(dados?.apostas ?? []).filter((w) => ["aberto", "valendo", "aguardando"].includes(w.status)).length} rotulo="apostas ativas" />
         <Numero n={pendentesTotal} rotulo="dívidas pendentes" alerta />
       </div>
@@ -218,6 +218,13 @@ function Painel() {
       )}
 
       {dados && secao === "mesas" && (
+        <>
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+          As mesas ficam sempre abertas: quando a partida acaba, a mesa volta sozinha. Daqui você adiciona, remove e apaga partidas antigas.
+        </p>
+        <Button className="mt-3 w-full" variant="ambar" disabled={ocupado} onClick={() => acao("criar_mesa", { p_group: turma.id }, "Mesa adicionada")}>
+          Adicionar mesa
+        </Button>
         <ul className="mt-3 flex flex-col divide-y rounded-2xl border bg-card">
           {mesas.length === 0 && <li className="p-4 text-center text-sm text-muted-foreground">Nenhuma mesa.</li>}
           {mesas.map((m) => {
@@ -230,9 +237,9 @@ function Painel() {
                     {m.status === "em_jogo" ? (
                       <Selo>AO VIVO</Selo>
                     ) : m.status === "aberta" ? (
-                      <Selo cor="ambar">ABERTA</Selo>
+                      <Selo cor="ambar">FIXA</Selo>
                     ) : (
-                      <Selo cor="cinza">FECHADA</Selo>
+                      <Selo cor="cinza">PARTIDA ANTIGA</Selo>
                     )}
                   </span>
                   <span className="block truncate text-[11px] text-muted-foreground">
@@ -246,23 +253,26 @@ function Painel() {
                     variant="outline"
                     disabled={ocupado}
                     onClick={() =>
-                      confirm(m.status === "em_jogo" ? "Fechar a mesa e anular a partida? Ninguém deve nada." : "Fechar essa mesa?") &&
-                      acao("encerrar_mesa", { p_mesa: m.id }, "Mesa fechada")
+                      confirm(m.status === "em_jogo" ? "Remover a mesa e anular a partida? Ninguém deve nada." : "Remover essa mesa da turma?") &&
+                      acao("encerrar_mesa", { p_mesa: m.id }, "Mesa removida")
                     }
                   >
-                    Fechar
+                    Remover
                   </Button>
                 )}
-                <BotaoApagar
-                  disabled={ocupado}
-                  rotulo="Apagar mesa"
-                  pergunta="Apagar a mesa inteira? Some a partida, as jogadas, as apostas da mesa e as dívidas que ela gerou."
-                  aoConfirmar={() => acao("admin_apagar_mesa", { p_mesa: m.id }, "Mesa apagada")}
-                />
+                {m.status === "encerrada" && (
+                  <BotaoApagar
+                    disabled={ocupado}
+                    rotulo="Apagar partida"
+                    pergunta="Apagar essa partida? Somem as jogadas, as apostas ligadas a ela e as dívidas que ela gerou."
+                    aoConfirmar={() => acao("admin_apagar_mesa", { p_mesa: m.id }, "Partida apagada")}
+                  />
+                )}
               </li>
             );
           })}
         </ul>
+        </>
       )}
 
       {secao === "pessoas" && (
@@ -292,7 +302,7 @@ function Painel() {
       <Titulo>🧨 Zona de perigo</Titulo>
       <div className="rounded-2xl border border-alerta/40 bg-alerta/5 p-4">
         <p className="text-sm">
-          <b>Limpar todo o histórico:</b> apaga todas as mesas, partidas, apostas e dívidas. As pessoas, os itens e as configurações
+          <b>Limpar todo o histórico:</b> apaga todas as partidas, apostas e dívidas, e as mesas ficam vazias. As pessoas, os itens e as configurações
           continuam. Bom pra apagar os testes antes de começar pra valer.
         </p>
         <Button
@@ -300,7 +310,7 @@ function Painel() {
           className="mt-3 w-full"
           disabled={ocupado}
           onClick={() =>
-            confirm("Apagar TODO o histórico da turma (mesas, partidas, apostas e dívidas)?") &&
+            confirm("Apagar TODO o histórico da turma (partidas, apostas e dívidas)?") &&
             confirm("Certeza? Não dá pra desfazer e some pra todo mundo.") &&
             acao("admin_limpar_historico", { p_group: turma.id }, "Histórico limpo 🧹")
           }

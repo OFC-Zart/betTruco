@@ -20,13 +20,14 @@ export function Entrar() {
   const router = useRouter();
   const params = useSearchParams();
   const toast = useToast();
-  const codigo = params.get("codigo") ?? "";
+  const codigoDoLink = params.get("codigo") ?? "";
 
   const [aba, setAba] = useState<Aba>("criar");
   const [login, setLogin] = useState("");
   const [senha, setSenha] = useState("");
   const [verSenha, setVerSenha] = useState(false);
   const [apelido, setApelido] = useState("");
+  const [codigoDigitado, setCodigoDigitado] = useState("");
   const [avatar, setAvatar] = useState(AVATARES[0]);
   const [cor, setCor] = useState(CORES[0]);
   const [ocupado, setOcupado] = useState(false);
@@ -51,9 +52,9 @@ export function Entrar() {
         .then((x) => x.json())
         .catch(() => null);
       if (s?.logado) {
-        if (codigo) {
+        if (codigoDoLink) {
           try {
-            const r = await postar<{ dados: string }>("/api/rpc/entrar_turma", { p_codigo: codigo });
+            const r = await postar<{ dados: string }>("/api/rpc/entrar_turma", { p_codigo: codigoDoLink });
             try {
               localStorage.setItem("resenha:turma", r.dados);
             } catch {}
@@ -68,7 +69,7 @@ export function Entrar() {
       }
       if (s && !s.ok) setSemBanco(s.erro ?? "Banco de dados não conectado.");
     })();
-  }, [router, codigo, toast]);
+  }, [router, codigoDoLink, toast]);
 
   function irPraTurma(turma: string | null) {
     try {
@@ -80,6 +81,7 @@ export function Entrar() {
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setOcupado(true);
+    const codigo = codigoDoLink || codigoDigitado.trim();
     try {
       const r = await postar<{ turma: string | null }>(
         aba === "criar" ? "/api/auth/cadastro" : "/api/auth/entrar",
@@ -150,9 +152,9 @@ export function Entrar() {
             ))}
           </div>
 
-          {codigo && (
+          {codigoDoLink && (
             <p className="mt-3 rounded-lg bg-ambar/10 px-3 py-2 text-xs text-ambar">
-              Convite pra turma <b>{codigo.toUpperCase()}</b> — ao entrar você já cai nela.
+              Convite pra turma <b>{codigoDoLink.toUpperCase()}</b> — ao entrar você já cai nela.
             </p>
           )}
 
@@ -224,6 +226,22 @@ export function Entrar() {
                   />
                 ))}
               </div>
+            </>
+          )}
+
+          {!codigoDoLink && (
+            <>
+              <Label>Código da turma (se tiver)</Label>
+              <Input
+                placeholder="BAR-7K2"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                autoComplete="off"
+                maxLength={12}
+                value={codigoDigitado}
+                onChange={(e) => setCodigoDigitado(e.target.value.toUpperCase())}
+                className="font-placar tracking-widest"
+              />
             </>
           )}
 
